@@ -1,151 +1,161 @@
 package main
 
 import (
-    "fmt"
+	"fmt"
 )
 
-// BTreeNode is an interface that represents a node in the B-Tree
-type BTreeNode interface {
-    InsertNonFull(value int, t int)
-    Split(childIndex int, t int) *Node
-    IsLeaf() bool
-    Keys() []int
-    Insert(value int, t int)
-    Search(value int) (BTreeNode, int, bool)
+// BTreeNode represents a node in the B-tree
+type BTreeNode struct {
+	leaf  bool
+	keys  []int
+	child []*BTreeNode
 }
 
-// Node represents a node in the B-Tree, which can be either an internal node or a leaf node
-type Node struct {
-    keys     []int
-    children []BTreeNode
-    leaf     bool
-}
-
-// BTree represents a B-Tree
+// BTree represents the B-tree
+// Each internal node can have at most 2t - 1 keys.
+// Each internal node can have at most 2t children.
+// Each internal node, except for the root, must have at least t - 1 keys.
+// Each internal node, except for the root, must have at least t children.
+// All leaves must be at the same level.
 type BTree struct {
-    root *Node
-    t    int // Minimum degree
+	root *BTreeNode
+	t    int // Minimum degree (defines the range for number of keys)
 }
 
-// NewNode creates a new Node
-func NewNode(leaf bool) *Node {
-    return &Node{
-        keys:     []int{},
-        children: []BTreeNode{},
-        leaf:     leaf,
-    }
-}
-
-// NewBTree creates a new B-Tree with a given minimum degree
+// Create a new B-tree with the specified minimum degree
 func NewBTree(t int) *BTree {
-    root := NewNode(true)
-    return &BTree{root: root, t: t}
+	return &BTree{
+		root: &BTreeNode{leaf: true},
+		t:    t,
+	}
 }
 
-// IsLeaf checks if the node is a leaf
-func (n *Node) IsLeaf() bool {
-    return n.leaf
+// Insert a key into the B-tree
+func (bt *BTree) Insert(key int) {
+	root := bt.root
+	if len(root.keys) == (2*bt.t)-1 {
+		newRoot := &BTreeNode{}
+		bt.root = newRoot
+		newRoot.child = append(newRoot.child, root)
+		bt.splitChild(newRoot, 0)
+		bt.insertNonFull(newRoot, key)
+	} else {
+		bt.insertNonFull(root, key)
+	}
 }
 
-// Keys returns the keys of the node
-func (n *Node) Keys() []int {
-    return n.keys
+// Insert a key into a non-full B-tree node
+func (bt *BTree) insertNonFull(x *BTreeNode, key int) {
+	i := len(x.keys) - 1
+	if x.leaf { // if x is leaf node
+		x.keys = append(x.keys, 0)
+		for i >= 0 && key < x.keys[i] {
+			x.keys[i+1] = x.keys[i]
+			i--
+		}
+		x.keys[i+1] = key // line53-57 finds the appropriate position to put key to
+	} else {
+		for i >= 0 && key < x.keys[i] {
+			i--
+		}
+		i++
+		if len(x.child[i].keys) == (2*bt.t)-1 {
+			bt.splitChild(x, i) // After splitting, the median key from the full child x.child[i] is moved up to the parent x at index i.
+			if key > x.keys[i] {
+				i++
+			}
+		}
+		bt.insertNonFull(x.child[i], key)
+	}
 }
 
-// InsertNonFull inserts a new key into a non-full node
-func (n *Node) InsertNonFull(value int, t int) {
-    i := len(n.keys) - 1
-    if n.IsLeaf() {
-        // Insert in a leaf node
-        n.keys = append(n.keys, 0) // Ensure space for the new key
-        for i >= 0 && value < n.keys[i] {
-            n.keys[i+1] = n.keys[i]
-            i--
-        }
-        n.keys[i+1] = value
-    } else {
-        // Insert in an internal node
-        for i >= 0 && value < n.keys[i] {
-            i--
-        }
-        i++
-        if len(n.children[i].Keys()) == 2*t-1 {
-            n.Split(i, t)
-            if value > n.keys[i] {
-                i++
-            }
-        }
-        n.children[i].InsertNonFull(value, t)
-    }
+// Split a child node of the B-tree
+// x: parent node, i: index of the child to be split.
+func (bt *BTree) splitChild(x *BTreeNode, i int) {
+	t := bt.t                     // minimum degree
+	y := x.child[i]               // y is the node to be split
+	z := &BTreeNode{leaf: y.leaf} // a new node (right sibling of y, to put values split from y)
+
+	x.child = append(x.child[:i+1], nil)
+	copy(x.child[i+2:], x.child[i+1:])
+	x.child[i+1] = z // line79-81 inserts z(the new node) to the appropriate position in x.child(parent of y and z)
+
+	x.keys = append(x.keys[:i], 0)
+	copy(x.keys[i+1:], x.keys[i:])
+	x.keys[i] = y.keys[t-1] // line84-86 inserts key(taken from y.keys) to x.keys
+
+	z.keys = append(z.keys, y.keys[t:]...) // halve y.keys, move the second part to z.keys
+	y.keys = y.keys[:t-1]                  // halve y.keys, and kept the first part
+
+	if !y.leaf { // halve y.child, more the second half to z.child
+		z.child = append(z.child, y.child[t:]...)
+		y.child = y.child[:t]
+	}
 }
 
-// Split splits the child of the node at childIndex
-func (n *Node) Split(childIndex int, t int) *Node {
-    child := n.children[childIndex].(*Node)
-    newChild := NewNode(child.IsLeaf())
-    newChild.keys = append(newChild.keys, child.keys[t:(2*t-1)]...)
-    child.keys = child.keys[:t-1]
-
-    if !child.IsLeaf() {
-        newChild.children = append(newChild.children, child.children[t:(2*t)]...)
-        child.children = child.children[:t]
-    }
-
-    n.children = append(n.children[:childIndex+1], append([]BTreeNode{newChild}, n.children[childIndex+1:]...)...)
-    n.keys = append(n.keys[:childIndex], append([]int{child.keys[t-1]}, n.keys[childIndex:]...)...)
-
-    return newChild
+// Lookup searches for a key in the B-tree. Returns true if the key is found, along with the associated value.
+func (bt *BTree) Lookup(key int) (bool, int) {
+	return bt.lookupKey(bt.root, key)
 }
 
-// Insert inserts a new key into the B-Tree
-func (b *BTree) Insert(value int) {
-    root := b.root
-    if len(root.keys) == 2*b.t-1 {
-        // Root is full, need to split
-        newRoot := NewNode(false)
-        b.root = newRoot
-        newRoot.children = append(newRoot.children, root)
-        newRoot.Split(0, b.t)
-        newRoot.InsertNonFull(value, b.t)
-    } else {
-        root.InsertNonFull(value, b.t)
-    }
+// Helper function for key lookup
+func (bt *BTree) lookupKey(node *BTreeNode, key int) (bool, int) {
+	i := 0
+	for i < len(node.keys) && key > node.keys[i] {
+		i++
+	}
+
+	if i < len(node.keys) && key == node.keys[i] {
+		// Key found in the current node
+		return true, key
+	} else if node.leaf {
+		// Key not found in a leaf node
+		return false, 0
+	} else {
+		// Recursively search in the appropriate child
+		return bt.lookupKey(node.child[i], key)
+	}
 }
 
-// Search searches for a value in the B-Tree
-func (n *Node) Search(value int) (BTreeNode, int, bool) {
-    i := 0
-    for i < len(n.keys) && value > n.keys[i] {
-        i++
-    }
-    if i < len(n.keys) && value == n.keys[i] {
-        return n, i, true
-    }
-    if n.IsLeaf() {
-        return nil, -1, false
-    }
-    return n.children[i].Search(value)
+// Display prints out the structure of the B-tree under the specified node.
+// 需要加工一下
+func (bt *BTree) Display(node *BTreeNode, level int) {
+	if node != nil {
+		fmt.Printf("Level %d: ", level)
+		for _, key := range node.keys {
+			fmt.Printf("%d ", key)
+		}
+		fmt.Println()
+
+		for _, child := range node.child {
+			bt.Display(child, level+1)
+		}
+	}
+}
+
+// Print the B-tree in-order traversal
+func (bt *BTree) inOrderTraversal(node *BTreeNode) {
+	if node != nil {
+		for i, key := range node.keys {
+			if !node.leaf {
+				bt.inOrderTraversal(node.child[i])
+			}
+			fmt.Print(key, " ")
+		}
+		if !node.leaf {
+			bt.inOrderTraversal(node.child[len(node.keys)])
+		}
+	}
 }
 
 func main() {
-    t := 3 // Minimum degree
-    btree := NewBTree(t)
+	btree := NewBTree(5) // Create a B-tree with a minimum degree of 2
 
-    // Example inserts
-    btree.Insert(10)
-    btree.Insert(20)
-    btree.Insert(5)
-    btree.Insert(6)
-    btree.Insert(12)
-    btree.Insert(30)
-    btree.Insert(7)
-    btree.Insert(17)
+	keys := []int{50, 30, 70, 10, 40, 60, 80, 20, 45, 65, 35, 55, 75, 90}
+	for _, key := range keys {
+		btree.Insert(key)
+	}
 
-    // Example search
-    node, index, found := btree.root.Search(6)
-    if found {
-        fmt.Printf("Value %d found in node with keys: %v at index %d\n", 6, node.Keys(), index)
-    } else {
-        fmt.Println("Value not found")
-    }
+	fmt.Println("In-order traversal of B-tree:")
+	btree.inOrderTraversal(btree.root)
 }
