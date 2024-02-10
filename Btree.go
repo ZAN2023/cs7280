@@ -4,6 +4,8 @@ import (
 	"fmt"
 )
 
+// reference: https://www.bilibili.com/video/BV1Jh411q7xP/?spm_id_from=333.337.search-card.all.click&vd_source=b9a995f049da13fe81c8e1e2c914a92e
+
 type Key struct {
 	key, val int
 }
