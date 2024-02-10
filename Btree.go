@@ -122,7 +122,7 @@ func (bt *BTree) lookupKey(node *BTreeNode, key int) (bool, int) {
 }
 
 // Display prints out the structure of the B-tree under the specified node.
-// 需要加工一下
+// 需要加工一下, 没太明白要怎么display
 func (bt *BTree) Display(node *BTreeNode, level int) {
 	if node != nil {
 		fmt.Printf("Level %d: ", level)
@@ -162,4 +162,13 @@ func main() {
 
 	fmt.Println("In-order traversal of B-tree:")
 	btree.inOrderTraversal(btree.root)
+
+	fmt.Println("Find if key 80 exist")
+	fmt.Println(btree.Lookup(80))
+
+	fmt.Println("Find if key 99 exist")
+	fmt.Println(btree.Lookup(99))
+
+	fmt.Println("Find if key 36 exist")
+	fmt.Println(btree.Lookup(36))
 }
