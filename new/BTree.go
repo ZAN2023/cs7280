@@ -141,17 +141,44 @@ func (bt *BTree_) PrintTree(n *Node) {
 	}
 }
 
-func main() {
-	bTree := NewBTree(3)
+func (bt *BTree_) PrintTreeWithoutVal(n *Node) {
+	getVals := func(keys []*Key) (ans []int) {
+		for _, key := range keys {
+			ans = append(ans, key.Key)
+		}
+		return
+	}
+	q := []*Node{n}
+	cnt := 0
+	for len(q) > 0 {
+		size := len(q)
+		for i := 0; i < size; i++ {
+			x := q[0]
+			q = q[1:]
+			fmt.Print(cnt, ":", getVals(x.Keys), "------")
+			cnt++
+			for _, child := range x.Children {
+				q = append(q, child)
+			}
+		}
+		fmt.Println()
+	}
+}
 
-	keys := []int{34, 11, 76, 53, 29, 48, 65, 95, 81, 92, 68, 59, 87, 20, 45, 26, 83, 70, 37, 7, 17, 73, 42, 96, 23, 58, 8, 50, 94, 61}
+func main() {
+	bTree := NewBTree(4)
+
+	keys := []int{34, 11, 76, 53, 29, 48, 65, 95, 81, 92, 68, 59, 87, 20, 45, 26, 83, 70, 37, 7, 17, 73, 42, 96, 23, 58, 8, 50, 94, 61, 39, 40, 41, 46}
 
 	for _, key := range keys {
 		bTree.Insert(key, key*2)
 	}
 
 	fmt.Println("B-tree structure:")
-	bTree.PrintTree(bTree.Root)
+	bTree.PrintTreeWithoutVal(bTree.Root)
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
 
 	fmt.Print("look up 53: ")
 	fmt.Println(bTree.LookupKey(bTree.Root, 53))
