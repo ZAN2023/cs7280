@@ -173,24 +173,42 @@ func (bt *BTree) inOrderTraversal(node *BTreeNode) {
 	}
 }
 
+func (bt *BTree) PrintTree(n *BTreeNode) {
+	q := []*BTreeNode{n}
+	for len(q) > 0 {
+		size := len(q)
+		for i := 0; i < size; i++ {
+			x := q[0]
+			q = q[1:]
+			fmt.Print(x.keys, "   ")
+			for _, child := range x.children {
+				q = append(q, child)
+			}
+		}
+		fmt.Println()
+	}
+}
+
 func main() {
-	btree := NewBTree(7) // Create a B-tree with a minimum degree of 2
+	btree := NewBTree(2) // Create a B-tree with a minimum degree of 2
 
 	keys := []int{29, 41, 44, 62, 46, 49, 27, 76, 91, 30, 100, 47, 34, 53, 9, 45}
 	for _, key := range keys {
 		btree.Insert(key, key*2)
 	}
 
-	fmt.Println("In-order traversal of B-tree:")
-	btree.inOrderTraversal(btree.root)
-	fmt.Println()
+	fmt.Println("Print tree:")
+	btree.PrintTree(btree.root)
+	//fmt.Println("In-order traversal of B-tree:")
+	//btree.inOrderTraversal(btree.root)
+	//fmt.Println()
 
-	fmt.Println("Find if key 100 exist")
-	fmt.Println(btree.Lookup(100))
-
-	fmt.Println("Find if key 99 exist")
-	fmt.Println(btree.Lookup(99))
-
-	fmt.Println("Find if key 36 exist")
-	fmt.Println(btree.Lookup(36))
+	//fmt.Println("Find if key 100 exist")
+	//fmt.Println(btree.Lookup(100))
+	//
+	//fmt.Println("Find if key 99 exist")
+	//fmt.Println(btree.Lookup(99))
+	//
+	//fmt.Println("Find if key 36 exist")
+	//fmt.Println(btree.Lookup(36))
 }
