@@ -13,9 +13,11 @@ To execute the 'Btree.go' file under the directory 'new', please follow the step
 3. 'cd cs7280/new';
 4. 'go run Btree.go';
 
+
 To test with a differnt degree(t):
 - Each node can contain between t-1 to 2t-1 keys (inclusive)
 - Change the input of "bTree := NewBTree(4)" in main() function
+
 
 To test with a different numbers:
 -  Change the input of "keys := int{}" in main() function
