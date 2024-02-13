@@ -120,8 +120,8 @@ func (bt *BTree_) insertNonFull(x *Node, key, val int) {
 }
 
 /*
- * splitChild splits the node when it has been full
- * The arguments include: x, the pointer to the parent node, idx, the index of the child that is going to be split
+ splitChild splits the node when it has been full
+ The arguments include: x, the pointer to the parent node, idx, the index of the child that is going to be split
  */
 func (bt *BTree_) splitChild(x *Node, idx int) {
 	y := x.Children[idx]
