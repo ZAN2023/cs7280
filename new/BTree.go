@@ -5,19 +5,20 @@ import (
 )
 
 /*
- * Key struct of a key-value pair
- * Key and Val are integers
- */
+Key: struct that has k-v pair
+*/
+
 type Key struct {
 	Key, Val int
 }
 
 /*
- * Node struct for a node in the B-tree
- * Leaf is a boolean, representing whether the current node is a leaf or not
- * Keys is a slice of keys in a node
- * Children is a slice of the pointers for the node's children
- */
+ Node struct for a node in the B-tree
+ Leaf: boolean, representing whether the current node is a leaf
+ Keys: a slice of keys in a node
+ Children: a slice of the pointers for the node's children
+*/
+
 type Node struct {
 	Leaf     bool
 	Keys     []*Key
@@ -25,34 +26,46 @@ type Node struct {
 }
 
 /*
- * BTree_ struct represents the B-tree
- * root is the pointer for the root node of B-tree
- * T is the minimum degree of the B-tree
- */
+ BTree_ struct represents the B-tree
+ Root: root node ptr of B-tree
+ T: minimum degree of the B-tree
+ Each internal node can have at most 2t - 1 keys.
+ Each internal node can have at most 2t children.
+ Each internal node, except for the root, must have at least t - 1 keys.
+ Each internal node, except for the root, must have at least t children.
+*/
+
 type BTree_ struct {
 	Root *Node
 	T    int
 }
 
 /*
- * NewKey creates a new Key structure with the given key and val value
- */
+ NewKey creates a new Key structure with the given key and val value
+*/
+
 func NewKey(key, val int) *Key {
 	return &Key{key, val}
 }
 
 /*
- * NewBTreeNode creates a new B-tree node
- * The leaf argument indicates whether the new node is a leaf or not
- */
+ NewBTreeNode creates a new B-tree node
+ The leaf argument indicates whether the new node is a leaf or not
+*/
+
 func NewBTreeNode(leaf bool) *Node {
 	return &Node{Leaf: leaf}
 }
 
 /*
- * NewBTree creates a new B-tree
- * The t argument indicates the minimum degree for the new B-tree
- */
+ NewBTree creates a new B-tree
+ The t argument indicates the minimum degree for the new B-tree
+ Each internal node can have at most 2t - 1 keys.
+ Each internal node can have at most 2t children.
+ Each internal node, except for the root, must have at least t - 1 keys.
+ Each internal node, except for the root, must have at least t children.
+*/
+
 func NewBTree(t int) *BTree_ {
 	return &BTree_{
 		Root: NewBTreeNode(true),
@@ -61,9 +74,9 @@ func NewBTree(t int) *BTree_ {
 }
 
 /*
- * Insert add the new key-val pair into the current B-tree
- * The B-tree properties are remained after the insert opertation by spliting nodes when necessary
- */
+ Insert add the new key-val pair into the current B-tree
+*/
+
 func (bt *BTree_) Insert(key, val int) {
 	target := bt.Root
 	if len(target.Keys) == (2*bt.T - 1) {
@@ -78,10 +91,10 @@ func (bt *BTree_) Insert(key, val int) {
 }
 
 /*
- * insertNonFull add the new key-val pair into a node of the current B-tree that is not full yet
- * The arguments include: x, the pointer to the node; the key-val pair to be inserted to the node
- * The B-tree properties are remained after the insert opertation by spliting nodes when necessary
- */
+ insertNonFull add the new key-val pair into a node of the current B-tree that is not full yet
+ The arguments include: x, the pointer to the node; the key-val pair to be inserted to the node
+*/
+
 func (bt *BTree_) insertNonFull(x *Node, key, val int) {
 	idx := len(x.Keys) - 1
 	if x.Leaf {
@@ -109,7 +122,6 @@ func (bt *BTree_) insertNonFull(x *Node, key, val int) {
 /*
  * splitChild splits the node when it has been full
  * The arguments include: x, the pointer to the parent node, idx, the index of the child that is going to be split
- * The B-tree properties are remained after the spliting by restructuring keys and children
  */
 func (bt *BTree_) splitChild(x *Node, idx int) {
 	y := x.Children[idx]
@@ -133,18 +145,20 @@ func (bt *BTree_) splitChild(x *Node, idx int) {
 }
 
 /*
- * Lookup find the specified value by recursively search in the appropriate children
- * If the key is found in the current node, it returns true
- * If the key is not found when reaching the leaf node, it returns false
- */
+ Lookup find the specified value by recursively search in the appropriate children
+ If the key is found in the current node, it returns true
+ If the key is not found when reaching the leaf node, it returns false
+*/
+
 func (bt *BTree_) Lookup(key int) bool {
 	return bt.LookupKey(bt.Root, key)
 }
 
 /*
- * LookupKey find the specified value by recursively search in the appropriate children
- * This is the helper function for Lookup
- */
+ LookupKey find the specified value by recursively search in the appropriate children
+ This is the helper function for Lookup
+*/
+
 func (bt *BTree_) LookupKey(node *Node, key int) bool {
 	i := 0
 	for i < len(node.Keys) && key > node.Keys[i].Key {
@@ -164,154 +178,93 @@ func (bt *BTree_) LookupKey(node *Node, key int) bool {
 }
 
 /*
- * PrintTree prints the current B-tree starting from a given node
- * The key-value pair is printed in the B-tree structure for displaying
- */
+ PrintTree prints the current B-tree starting from a given node
+ The key-value pair is printed in the B-tree structure for displaying
+*/
+
 func (bt *BTree_) PrintTree(n *Node) {
-	getVals := func(keys []*Key) (ans [][]int) {
+	getKV := func(keys []*Key) (ans [][]int) {
 		for _, key := range keys {
 			ans = append(ans, []int{key.Key, key.Val})
 		}
 		return
 	}
+
 	q := []*Node{n}
 	cnt := 0
 	for len(q) > 0 {
 		size := len(q)
-		for i := 0; i < size-1; i++ {
+		for i := 0; i < size; i++ {
 			x := q[0]
 			q = q[1:]
-			fmt.Print(cnt, ":", getVals(x.Keys), "------")
+			fmt.Print(cnt, ":", getKV(x.Keys), "------")
 			cnt++
 			for _, child := range x.Children {
 				q = append(q, child)
 			}
-		}
-		x := q[0]
-		q = q[1:]
-		fmt.Print(cnt, ":", getVals(x.Keys))
-		cnt++
-		for _, child := range x.Children {
-			q = append(q, child)
 		}
 		fmt.Println()
 	}
 }
 
 /*
- * PrintTreeWithoutVal prints the current B-tree starting from a given node
- * Only the key is printed in the B-tree structure for simpler identification
- */
+ PrintTreeWithoutVal prints the current B-tree starting from a given node
+ Only the key is printed in the B-tree structure for simpler identification
+*/
+
 func (bt *BTree_) PrintTreeWithoutVal(n *Node) {
-	getVals := func(keys []*Key) (ans []int) {
+	getK := func(keys []*Key) (ans []int) {
 		for _, key := range keys {
 			ans = append(ans, key.Key)
 		}
 		return
 	}
+
 	q := []*Node{n}
 	cnt := 0
 	for len(q) > 0 {
 		size := len(q)
-		for i := 0; i < size-1; i++ {
+		for i := 0; i < size; i++ {
 			x := q[0]
 			q = q[1:]
-			fmt.Print(cnt, ":", getVals(x.Keys), "------")
+			fmt.Print(cnt, ":", getK(x.Keys), "------")
 			cnt++
 			for _, child := range x.Children {
 				q = append(q, child)
 			}
-		}
-		x := q[0]
-		q = q[1:]
-		fmt.Print(cnt, ":", getVals(x.Keys))
-		cnt++
-		for _, child := range x.Children {
-			q = append(q, child)
 		}
 		fmt.Println()
 	}
 }
 
 /*
- * Display prints the current B-tree starting from a specified node index
- *  * The key-value pair is printed in the B-tree structure for displaying
- */
+ Display prints the current B-tree starting from a specified node index
+ Only key will be printed to represent the sub-tree structure
+*/
+
 func (bt *BTree_) Display(node int) {
-	if bt.Root == nil {
-		fmt.Println("The tree is empty.")
-		return
-	}
-
-	// getVals := func(keys []*Key) (ans [][]int) {
-	// 	for _, key := range keys {
-	// 		ans = append(ans, []int{key.Key, key.Val})
-	// 	}
-	// 	return
-	// }
-	getVals := func(keys []*Key) (ans []int) {
-		for _, key := range keys {
-			ans = append(ans, key.Key)
-		}
-		return
-	}
-
-	curIndex := 0
-	found := false
 	q := []*Node{bt.Root}
-	var qChildren []*Node
-
-	for len(q) > 0 && !found {
-		x := q[0]
-		q = q[1:]
-		if x.Leaf == false {
+	cnt := 0
+	for len(q) > 0 {
+		size := len(q)
+		for i := 0; i < size; i++ {
+			x := q[0]
+			q = q[1:]
+			if cnt == node {
+				bt.PrintTreeWithoutVal(x)
+				return
+			}
+			cnt++
 			for _, child := range x.Children {
 				q = append(q, child)
 			}
 		}
-
-		if curIndex == node {
-			found = true
-			fmt.Println(getVals(x.Keys))
-			if x.Leaf == false {
-				qChildren = []*Node{}
-				for _, child := range x.Children {
-					qChildren = append(qChildren, child)
-				}
-			}
-		}
-
-		if found {
-			for len(qChildren) > 0 {
-				size := len(qChildren)
-				for i := 0; i < size-1; i++ {
-					curNode := qChildren[0]
-					qChildren = qChildren[1:]
-					fmt.Print(getVals(curNode.Keys), "------")
-					for _, child := range x.Children {
-						q = append(q, child)
-					}
-				}
-				curNode := qChildren[0]
-				qChildren = qChildren[1:]
-				fmt.Print(getVals(curNode.Keys))
-				for _, child := range x.Children {
-					q = append(q, child)
-				}
-				fmt.Println()
-			}
-
-		}
-		curIndex++
-	}
-
-	if found == false {
-		fmt.Println("\n the input node index is out of bound!")
+		fmt.Println()
 	}
 }
 
 func main() {
-	bTree := NewBTree(3)
+	bTree := NewBTree(5)
 
 	keys := []int{34, 11, 76, 53, 29, 48, 65, 95, 81, 92, 68, 59, 87, 20, 45, 26, 83, 70, 37, 7, 17, 73, 42, 96, 23, 58, 8, 50, 94, 61, 39, 40, 41, 46}
 
@@ -319,26 +272,11 @@ func main() {
 		bTree.Insert(key, key*2)
 	}
 
-	fmt.Println("B-tree structure:")
+	fmt.Println("-----------------B-tree structure------------------")
 	bTree.PrintTreeWithoutVal(bTree.Root)
 	fmt.Println()
 
-	fmt.Println("------------------------------------------")
-	fmt.Println("Printing both key and value:")
-	bTree.PrintTree(bTree.Root)
-	fmt.Println()
-
-	fmt.Println("------------------------------------------")
-	fmt.Println("Test Display function:")
-	bTree.Display(1)
-	// fmt.Println()
-	// fmt.Println("2")
-	// bTree.Display(2)
-	// fmt.Println("3")
-	// bTree.Display(3)
-
-	fmt.Println("------------------------------------------")
-	fmt.Println("Test Lookup function:")
+	fmt.Println("-----------------Test Lookup-------------------------")
 	fmt.Print("look up 53: ")
 	fmt.Println(bTree.Lookup(53))
 
@@ -349,9 +287,16 @@ func main() {
 	fmt.Println(bTree.Lookup(3999))
 	fmt.Println()
 
-	fmt.Println("------------------------------------------")
-	fmt.Println("Test Insert function:")
-	fmt.Println("Insert 40: ")
-	bTree.Insert(40, 80)
-	bTree.PrintTreeWithoutVal(bTree.Root)
+	fmt.Println("----------B-tree structure with value--------------")
+	bTree.PrintTree(bTree.Root)
+	fmt.Println()
+
+	fmt.Println("---------------Test Display function----------------")
+	bTree.Display(1)
+	// fmt.Println()
+	// fmt.Println("2")
+	// bTree.Display(2)
+	// fmt.Println("3")
+	// bTree.Display(3)
+
 }
