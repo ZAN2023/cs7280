@@ -167,24 +167,15 @@ func (bt *BTree_) PrintTree(n *Node) {
 		return
 	}
 	q := []*Node{n}
-	cnt := 0
 	for len(q) > 0 {
 		size := len(q)
-		for i := 0; i < size-1; i++ {
+		for i := 0; i < size; i++ {
 			x := q[0]
 			q = q[1:]
-			fmt.Print(cnt, ":", getVals(x.Keys), "------")
-			cnt++
+			fmt.Print(getVals(x.Keys), "------")
 			for _, child := range x.Children {
 				q = append(q, child)
 			}
-		}
-		x := q[0]
-		q = q[1:]
-		fmt.Print(cnt, ":", getVals(x.Keys))
-		cnt++
-		for _, child := range x.Children {
-			q = append(q, child)
 		}
 		fmt.Println()
 	}
@@ -205,7 +196,7 @@ func (bt *BTree_) PrintTreeWithoutVal(n *Node) {
 	cnt := 0
 	for len(q) > 0 {
 		size := len(q)
-		for i := 0; i < size-1; i++ {
+		for i := 0; i < size; i++ {
 			x := q[0]
 			q = q[1:]
 			fmt.Print(cnt, ":", getVals(x.Keys), "------")
@@ -213,13 +204,6 @@ func (bt *BTree_) PrintTreeWithoutVal(n *Node) {
 			for _, child := range x.Children {
 				q = append(q, child)
 			}
-		}
-		x := q[0]
-		q = q[1:]
-		fmt.Print(cnt, ":", getVals(x.Keys))
-		cnt++
-		for _, child := range x.Children {
-			q = append(q, child)
 		}
 		fmt.Println()
 	}
@@ -230,80 +214,10 @@ func (bt *BTree_) PrintTreeWithoutVal(n *Node) {
  *  * The key-value pair is printed in the B-tree structure for displaying
  */
 func (bt *BTree_) Display(node int) {
-	if bt.Root == nil {
-		fmt.Println("The tree is empty.")
-		return
-	}
-
-	// getVals := func(keys []*Key) (ans [][]int) {
-	// 	for _, key := range keys {
-	// 		ans = append(ans, []int{key.Key, key.Val})
-	// 	}
-	// 	return
-	// }
-	getVals := func(keys []*Key) (ans []int) {
-		for _, key := range keys {
-			ans = append(ans, key.Key)
-		}
-		return
-	}
-
-	curIndex := 0
-	found := false
-	q := []*Node{bt.Root}
-	var qChildren []*Node
-
-	for len(q) > 0 && !found {
-		x := q[0]
-		q = q[1:]
-		if x.Leaf == false {
-			for _, child := range x.Children {
-				q = append(q, child)
-			}
-		}
-
-		if curIndex == node {
-			found = true
-			fmt.Println(getVals(x.Keys))
-			if x.Leaf == false {
-				qChildren = []*Node{}
-				for _, child := range x.Children {
-					qChildren = append(qChildren, child)
-				}
-			}
-		}
-
-		if found {
-			for len(qChildren) > 0 {
-				size := len(qChildren)
-				for i := 0; i < size-1; i++ {
-					curNode := qChildren[0]
-					qChildren = qChildren[1:]
-					fmt.Print(getVals(curNode.Keys), "------")
-					for _, child := range x.Children {
-						q = append(q, child)
-					}
-				}
-				curNode := qChildren[0]
-				qChildren = qChildren[1:]
-				fmt.Print(getVals(curNode.Keys))
-				for _, child := range x.Children {
-					q = append(q, child)
-				}
-				fmt.Println()
-			}
-
-		}
-		curIndex++
-	}
-
-	if found == false {
-		fmt.Println("\n the input node index is out of bound!")
-	}
 }
 
 func main() {
-	bTree := NewBTree(3)
+	bTree := NewBTree(2)
 
 	keys := []int{34, 11, 76, 53, 29, 48, 65, 95, 81, 92, 68, 59, 87, 20, 45, 26, 83, 70, 37, 7, 17, 73, 42, 96, 23, 58, 8, 50, 94, 61, 39, 40, 41, 46}
 
@@ -314,36 +228,15 @@ func main() {
 	fmt.Println("B-tree structure:")
 	bTree.PrintTreeWithoutVal(bTree.Root)
 	fmt.Println()
-
-	fmt.Println("------------------------------------------")
-	fmt.Println("Printing both key and value:")
-	bTree.PrintTree(bTree.Root)
+	fmt.Println()
 	fmt.Println()
 
-	fmt.Println("------------------------------------------")
-	fmt.Println("Test Display function:")
-	bTree.Display(1)
-	// fmt.Println()
-	// fmt.Println("2")
-	// bTree.Display(2)
-	// fmt.Println("3")
-	// bTree.Display(3)
-
-	fmt.Println("------------------------------------------")
-	fmt.Println("Test Lookup function:")
 	fmt.Print("look up 53: ")
 	fmt.Println(bTree.LookupKey(bTree.Root, 53))
 
 	fmt.Print("look up 68: ")
 	fmt.Println(bTree.LookupKey(bTree.Root, 68))
 
-	fmt.Print("look up 3999: ")
+	fmt.Print("look up 3999:")
 	fmt.Println(bTree.LookupKey(bTree.Root, 3999))
-	fmt.Println()
-
-	fmt.Println("------------------------------------------")
-	fmt.Println("Test Insert function:")
-	fmt.Println("Insert 40: ")
-	bTree.Insert(40, 80)
-	bTree.PrintTreeWithoutVal(bTree.Root)
 }
