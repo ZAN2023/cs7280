@@ -194,13 +194,20 @@ func (bt *BTree_) PrintTree(n *Node) {
 	cnt := 0
 	for len(q) > 0 {
 		size := len(q)
+		level := make([][][]int, 0)
 		for i := 0; i < size; i++ {
 			x := q[0]
 			q = q[1:]
-			fmt.Print(cnt, ":", getKV(x.Keys), "------")
+			level = append(level, getKV(x.Keys))
 			cnt++
 			for _, child := range x.Children {
 				q = append(q, child)
+			}
+		}
+		for i := 0; i < len(level); i++ {
+			fmt.Print(level[i])
+			if i != len(level)-1 {
+				fmt.Print("---")
 			}
 		}
 		fmt.Println()
@@ -224,13 +231,20 @@ func (bt *BTree_) PrintTreeWithoutVal(n *Node) {
 	cnt := 0
 	for len(q) > 0 {
 		size := len(q)
+		level := make([][]int, 0)
 		for i := 0; i < size; i++ {
 			x := q[0]
 			q = q[1:]
-			fmt.Print(cnt, ":", getK(x.Keys), "------")
+			level = append(level, getK(x.Keys))
 			cnt++
 			for _, child := range x.Children {
 				q = append(q, child)
+			}
+		}
+		for i := 0; i < len(level); i++ {
+			fmt.Print(level[i])
+			if i != len(level)-1 {
+				fmt.Print("---")
 			}
 		}
 		fmt.Println()
@@ -264,7 +278,7 @@ func (bt *BTree_) Display(node int) {
 }
 
 func main() {
-	bTree := NewBTree(5)
+	bTree := NewBTree(3)
 
 	keys := []int{34, 11, 76, 53, 29, 48, 65, 95, 81, 92, 68, 59, 87, 20, 45, 26, 83, 70, 37, 7, 17, 73, 42, 96, 23, 58, 8, 50, 94, 61, 39, 40, 41, 46}
 
