@@ -7,7 +7,7 @@ B-tree
 Introduction to Algorithms, Third Edition, by Cormen, Leiserson, Rivest and Stein, from MIT Press (https://mitpress.mit.edu/books/introduction-algorithms), Chapter 18
 ## Input
 Manual
-# Assumptions
+## Assumptions
 - The index is designed for operating on main memory storage only in this Phase 1;
 - The keys and values are taken as integer values;
 - In the simulation of block operations, a simple array referencing in the blocks is used, which is dynamically growing if the number of occupied blocks increases.
