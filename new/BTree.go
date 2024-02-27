@@ -120,9 +120,9 @@ func (bt *BTree_) insertNonFull(x *Node, key, val int) {
 }
 
 /*
- splitChild splits the node when it has been full
- The arguments include: x, the pointer to the parent node, idx, the index of the child that is going to be split
- */
+splitChild splits the node when it has been full
+The arguments include: x, the pointer to the parent node, idx, the index of the child that is going to be split
+*/
 func (bt *BTree_) splitChild(x *Node, idx int) {
 	y := x.Children[idx]
 	z := NewBTreeNode(y.Leaf)
@@ -280,7 +280,7 @@ func (bt *BTree_) Display(node int) {
 func main() {
 	bTree := NewBTree(3)
 
-	keys := []int{34, 11, 76, 53, 29, 48, 65, 95, 81, 92, 68, 59, 87, 20, 45, 26, 83, 70, 37, 7, 17, 73, 42, 96, 23, 58, 8, 50, 94, 61, 39, 40, 41, 46}
+	keys := []int{29, 41, 44, 62, 46, 49, 27, 76, 91, 30, 100, 47, 34, 53, 9, 45}
 
 	for _, key := range keys {
 		bTree.Insert(key, key*2)
@@ -301,9 +301,9 @@ func main() {
 	fmt.Println(bTree.Lookup(3999))
 	fmt.Println()
 
-	fmt.Println("----------B-tree structure with value--------------")
-	bTree.PrintTree(bTree.Root)
-	fmt.Println()
+	//fmt.Println("----------B-tree structure with value--------------")
+	//bTree.PrintTree(bTree.Root)
+	//fmt.Println()
 
 	fmt.Println("---------------Test Display function----------------")
 	bTree.Display(1)
@@ -313,4 +313,7 @@ func main() {
 	// fmt.Println("3")
 	// bTree.Display(3)
 
+	fmt.Println("---------------Test insert----------------")
+	bTree.Insert(60, 60*2)
+	bTree.PrintTreeWithoutVal(bTree.Root)
 }
