@@ -8,8 +8,8 @@
     - 2~3 sample of data:
     -------------------------------------------------------------------------
         1	Toy Story (1995)	Adventure|Animation|Children|Comedy|Fantasy
-        2	Jumanji (1995)	Adventure|Children|Fantasy
-        3	Grumpier Old Men (1995)	Comedy|Romance
+        2	Jumanji (1995)	    Adventure|Children|Fantasy
+        3	Grumpier            Old Men (1995)	Comedy|Romance
     -------------------------------------------------------------------------
 
 - Allocation method: linked allocation
