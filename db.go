@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 const (
@@ -23,6 +24,7 @@ type Entry struct {
 
 type DB struct {
 	Name   string
+	Num    int
 	Bitmap []bool
 	FCBs   []*FCB
 	Blocks []Block
@@ -36,20 +38,7 @@ type Block struct {
 func openDB(dbName string) *DB {
 	dbPath := dbName + FileNameSuffix + "0"
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		db := &DB{
-			Name:   dbName,
-			Bitmap: make([]bool, 4096),
-			FCBs:   make([]*FCB, 0),
-			Blocks: make([]Block, 4096),
-		}
-		for i := 0; i < MetaDataBlocks+BitmapBlocks; i++ {
-			db.Bitmap[i] = true
-		}
-		err = db.writeDBToDisk()
-		if err != nil {
-			panic(err)
-		}
-		return db
+		return newDB(dbName, 0)
 	} else {
 		data, err := ioutil.ReadFile(dbPath)
 		if err != nil {
@@ -78,6 +67,7 @@ func openDB(dbName string) *DB {
 		metaData := &MetaData{}
 		metaData.Deserialize(metaDataBytes[:])
 
+		db.Name = metaData.DBName
 		db.FCBs = make([]*FCB, len(metaData.FileNames))
 		for i, fileName := range metaData.FileNames {
 			fcb := &FCB{}
@@ -96,6 +86,7 @@ func openDB(dbName string) *DB {
 }
 
 func (db *DB) put(fileName string) error {
+	db := newDB(db.Name)
 	data, err := ioutil.ReadFile(fileName)
 	if err != nil {
 		return err
@@ -109,29 +100,88 @@ func (db *DB) put(fileName string) error {
 			Value: string(line[:min(len(line), MaxValueSize)]),
 		})
 	}
-
-	dataBlocks := make([]int, 0)
-	for i := 0; i < len(entries); {
-		block := db.allocBlock()
-		dataBlocks = append(dataBlocks, block)
-		for j := 0; j < BlockSize && i < len(entries); j += MaxValueSize + 4 {
-			copy(db.Blocks[block].Data[j:], intToBytes(entries[i].Key))
-			copy(db.Blocks[block].Data[j+4:], entries[i].Value)
-			i++
-		}
-		if i < len(entries) {
-			nextBlock := db.allocBlock()
-			db.Blocks[block].NextBlock = nextBlock
-			block = nextBlock
-		}
-	}
-
+	// TODO 这里有问题，计算需要的block数量要用entry数量计算，不是data的大小
 	indexTree := NewBTree(3)
-
 	indexBlocks := make([]int, 0)
 	for _, entry := range entries {
-		indexTree.Insert(entry.Key, len(dataBlocks)-1)
-		indexBlocks = append(indexBlocks, entry.Key)
+		indexTree.Insert(entry.Key, entry.Key)
+	}
+
+	emptyBlocks := db.countEmptyBlock()
+
+	// ------------
+	// 计算需要的数据块数量
+	dataBlocks := make([]int, 0)
+	remainingBytes := len(data)
+	for remainingBytes > 0 {
+		blockNo := db.allocBlock()
+		if blockNo == -1 {
+			// 当前数据库文件已满,创建新的数据库文件
+			db.writeDBToDisk()
+			newDBName := fmt.Sprintf("%s%s%d", db.Name, FileNameSuffix, len(db.Blocks)/4096)
+			newDB := &DB{
+				Name:   newDBName,
+				Bitmap: make([]bool, 4096),
+				FCBs:   make([]*FCB, 0),
+				Blocks: make([]Block, 4096),
+			}
+			for i := 0; i < MetaDataBlocks+BitmapBlocks; i++ {
+				newDB.Bitmap[i] = true
+			}
+			db = newDB
+			blockNo = db.allocBlock()
+		}
+		dataBlocks = append(dataBlocks, blockNo)
+		remainingBytes -= BlockSize
+	}
+
+	// 写入数据块
+	remainingBytes = len(data)
+	for _, blockNo := range dataBlocks {
+		if remainingBytes <= 0 {
+			break
+		}
+		copy(db.Blocks[blockNo].Data[:], data[len(data)-remainingBytes:])
+		remainingBytes -= BlockSize
+	}
+
+	// 创建索引
+	indexTree := NewBTree(3)
+	indexBlocks := make([]int, 0)
+	for _, entry := range entries {
+		indexTree.Insert(entry.Key, entry.Key)
+	}
+
+	// 序列化索引树
+	indexData := indexTree.Serialize()
+
+	// 计算索引块数量并写入
+	remainingBytes = len(indexData)
+	for remainingBytes > 0 {
+		blockNo := db.allocBlock()
+		if blockNo == -1 {
+			// 当前数据库文件已满,创建新的数据库文件
+			db.writeDBToDisk()
+			newDBName := fmt.Sprintf("%s%s%d", db.Name, FileNameSuffix, len(db.Blocks)/4096)
+			newDB := &DB{
+				Name:   newDBName,
+				Bitmap: make([]bool, 4096),
+				FCBs:   make([]*FCB, 0),
+				Blocks: make([]Block, 4096),
+			}
+			for i := 0; i < MetaDataBlocks+BitmapBlocks; i++ {
+				newDB.Bitmap[i] = true
+			}
+			db = newDB
+			blockNo = db.allocBlock()
+		}
+		indexBlocks = append(indexBlocks, blockNo)
+		if remainingBytes >= BlockSize {
+			copy(db.Blocks[blockNo].Data[:], indexData[len(indexData)-remainingBytes:len(indexData)-remainingBytes+BlockSize])
+		} else {
+			copy(db.Blocks[blockNo].Data[:], indexData[len(indexData)-remainingBytes:])
+		}
+		remainingBytes -= BlockSize
 	}
 
 	fcb := NewFCB(fileName, indexBlocks, dataBlocks)
@@ -199,6 +249,24 @@ func kill(dbName string) error {
 	return nil
 }
 
+func newDB(dbName string, num int) *DB {
+	db := &DB{
+		Name:   dbName,
+		Num:    num,
+		Bitmap: make([]bool, 4096),
+		FCBs:   make([]*FCB, 0),
+		Blocks: make([]Block, 4096),
+	}
+	for i := 0; i < MetaDataBlocks+BitmapBlocks; i++ {
+		db.Bitmap[i] = true
+	}
+	err = db.writeDBToDisk(num)
+	if err != nil {
+		panic(err)
+	}
+	return db
+}
+
 func (db *DB) allocBlock() int {
 	for i := 0; i < len(db.Bitmap); i++ {
 		if !db.Bitmap[i] {
@@ -206,9 +274,17 @@ func (db *DB) allocBlock() int {
 			return i
 		}
 	}
-	db.Blocks = append(db.Blocks, Block{})
-	db.Bitmap = append(db.Bitmap, true)
-	return len(db.Blocks) - 1
+	return -1
+}
+
+func (db *DB) countEmptyBlock() int {
+	cnt := 0
+	for i := 0; i < len(db.Bitmap); i++ {
+		if !db.Bitmap[i] {
+			cnt++
+		}
+	}
+	return cnt
 }
 
 func (db *DB) freeBlock(block int) {
@@ -228,7 +304,7 @@ func bytesToInt(b []byte) int {
 	return int(b[0])<<24 | int(b[1])<<16 | int(b[2])<<8 | int(b[3])
 }
 
-func (db *DB) writeDBToDisk() error {
+func (db *DB) writeDBToDisk(num int) error {
 	bitmap := make([]byte, 4096/8)
 	for i := 0; i < 4096; i++ {
 		if db.Bitmap[i] {
@@ -255,7 +331,7 @@ func (db *DB) writeDBToDisk() error {
 		data = append(data, block.Data[:]...)
 	}
 
-	dbPath := db.Name + FileNameSuffix + "0"
+	dbPath := db.Name + FileNameSuffix + strconv.Itoa(num)
 	err := ioutil.WriteFile(dbPath, data, 0644)
 	if err != nil {
 		return err

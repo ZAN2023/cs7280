@@ -1,5 +1,10 @@
 package main
 
+import (
+	"bytes"
+	"encoding/binary"
+)
+
 type Key struct {
 	Key, Val int
 }
@@ -108,4 +113,46 @@ func (bt *BTree) FindKey(node *Node, key int) int {
 		// Recursively search in the appropriate children
 		return bt.FindKey(node.Children[i], key)
 	}
+}
+
+func (bt *BTree) Serialize() []byte {
+	var buf bytes.Buffer
+	bt.serializeNode(&buf, bt.Root)
+	return buf.Bytes()
+}
+
+func (bt *BTree) serializeNode(buf *bytes.Buffer, node *Node) {
+	if node == nil {
+		return
+	}
+	buf.WriteByte(byte(len(node.Keys)))
+	for _, key := range node.Keys {
+		binary.Write(buf, binary.LittleEndian, int32(key.Key))
+		binary.Write(buf, binary.LittleEndian, int32(key.Val))
+	}
+	buf.WriteByte(byte(len(node.Children)))
+	for _, child := range node.Children {
+		bt.serializeNode(buf, child)
+	}
+}
+
+func (bt *BTree) Deserialize(data []byte) {
+	buf := bytes.NewBuffer(data)
+	bt.Root = bt.deserializeNode(buf)
+}
+
+func (bt *BTree) deserializeNode(buf *bytes.Buffer) *Node {
+	numKeys, _ := buf.ReadByte()
+	node := NewBTreeNode(numKeys == 0)
+	for i := 0; i < int(numKeys); i++ {
+		var key, val int32
+		binary.Read(buf, binary.LittleEndian, &key)
+		binary.Read(buf, binary.LittleEndian, &val)
+		node.Keys = append(node.Keys, NewKey(int(key), int(val)))
+	}
+	numChildren, _ := buf.ReadByte()
+	for i := 0; i < int(numChildren); i++ {
+		node.Children = append(node.Children, bt.deserializeNode(buf))
+	}
+	return node
 }
