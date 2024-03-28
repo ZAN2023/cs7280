@@ -5,86 +5,67 @@ import java.io.RandomAccessFile;
 public class FileHandler {
     private RandomAccessFile file;
     private BlockHandler blockHandler;
-    private FCB currentFCB;
-    private int currentBlockIndex;
-    private int currentPosition;
+    private FCBHandler fcbHandler;
+    private MetadataHandler metadataHandler;
+    private BTreeIndex indexTree;
 
     public static final int BLOCK_SIZE = 256;
     private static final int INITIAL_SIZE = 1024 * 1024; // 1MB
     private static final int EXPAND_SIZE = 1024 * 1024; // 1MB
 
-    public FileHandler(String fileName) {
-        try {
-            this.file = new RandomAccessFile(fileName, "rw");
-            if (file.length() == 0) {
-                file.setLength(INITIAL_SIZE);
-            }
-            this.blockHandler = new BlockHandler((int) file.length());
-            this.currentBlockIndex = -1;
-            this.currentPosition = 0;
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
+    public FileHandler(String fileName) throws IOException {
+        this.file = new RandomAccessFile(fileName, "rw");
+        if (file.length() == 0) {
+            file.setLength(INITIAL_SIZE);
+            metadataHandler.writeInitialMetadata(file, fileName);
+        }
+        this.metadataHandler = new MetadataHandler();
+        this.fcbHandler = new FCBHandler(metadataHandler);
+        this.indexTree = new BTreeIndex();
+        this.blockHandler = new BlockHandler(file, fcbHandler, metadataHandler, indexTree);
+    }
+
+    public void createFile(String fileName, String fileType) throws IOException {
+        // Create a new file
+        FCB fcb = new FCB(fileName, 0, 0, 0, 0, 0);
+        fcbHandler.addFCB(fcb);
+        blockHandler.addFCB(fcb);
+        fcbHandler.writeFCBListMetadata(file);
+    }
+
+    public void openFile(String fileName) throws IOException {
+        // Open an existing file
+        FCB fcb = fcbHandler.findFCBByFileName(fileName);
+        if (fcb != null) {
+            // Perform any necessary operations when opening the file
         }
     }
 
-    public void write(byte[] data) {
-        // 写入数据到当前块
-        // ...
-        if (needExpand()) {
-            expandFileSize();
-        }
-        // ...
-    }
-
-    private boolean needExpand() {
-        // 检查是否需要扩展文件大小
-        // ...
-    }
-
-    public byte[] readData(int blockIndex, int offset, int length) {
-        // 从指定块读取数据
-        // ...
-    }
-
-    public void freeBlock(int blockIndex) {
-        // 释放指定块
-        blockHandler.freeBlock(blockIndex);
-    }
-
-    public void expandFileSize() {
-        // 扩展文件大小
-        long newSize = file.length() + EXPAND_SIZE;
-        blockHandler.expand(newSize);
-        try {
-            file.setLength(newSize);
-        } catch (IOException e) {
-            e.printStackTrace();
+    public void deleteFile(String fileName) throws IOException {
+        // Delete a file
+        FCB fcb = fcbHandler.findFCBByFileName(fileName);
+        if (fcb != null) {
+            // Delete the file and update metadata
+            // ...
         }
     }
 
-    public void addFCB(FCB fcb) {
-        // 添加 FCB
-        // ...
+    public void writeData(byte[] data) throws IOException {
+        // Write data to the file
+        blockHandler.write(data);
+        int fileSize = blockHandler.updateHeaderBlock(data.length);
+        FCB fcb = blockHandler.getCurrentFCB();
+        fcb.setFileSize(fileSize);
+        blockHandler.updateMetadata(fcb);
     }
 
-    public void setCurrentFCB(FCB fcb) {
-        // 设置当前 FCB
-        this.currentFCB = fcb;
+    public byte[] readData(int blockIndex, int offset, int length) throws IOException {
+        // Read data from the file
+        return blockHandler.readData(blockIndex, offset, length);
     }
 
-    public int getCurrentBlockIndex() {
-        // 获取当前块索引
-        return currentBlockIndex;
+    public void close() throws IOException {
+        // Close the file
+        file.close();
     }
-
-    public void close() {
-        // 关闭文件
-        try {
-            file.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-}
+}}

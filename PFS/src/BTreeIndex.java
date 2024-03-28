@@ -1,3 +1,4 @@
-public class BTreeIndex {
 // Btree index file
+
+public class BTreeIndex {
 }
