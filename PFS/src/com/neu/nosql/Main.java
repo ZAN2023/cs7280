@@ -6,6 +6,7 @@ import com.neu.nosql.index.BTreeSerializer;
 import com.neu.nosql.io.MovieReader;
 import com.neu.nosql.io.MovieWriter;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
@@ -47,6 +48,34 @@ public class Main {
         String fileName = "output.csv";
         String outputPath = directory + "/" + fileName;
         MovieWriter.writeToCSV(lines, outputPath);
+
+        System.out.println();
+        System.out.println("========== Test Metadata ===================");
+        Metadata metadata = new Metadata("test_db", 0);
+        byte[] serializedMetadata = Metadata.serialize(metadata);
+        System.out.println(serializedMetadata.toString());
+        Metadata deserializedMetadata = Metadata.deserialize(serializedMetadata);
+        System.out.println(deserializedMetadata.toString());
+
+        System.out.println();
+        System.out.println("========== Test FCB =======================");
+        ArrayList<Integer> indexBlocks = new ArrayList();
+        indexBlocks.add(2);
+        indexBlocks.add(19);
+        indexBlocks.add(8);
+        ArrayList<Integer> dataBlocks = new ArrayList();
+        dataBlocks.add(20);
+        dataBlocks.add(109);
+        dataBlocks.add(82);
+        try {
+            FCB fcb = new FCB("movie", "csv", indexBlocks, dataBlocks);
+            byte[] serializedFCB = FCB.serialize(fcb);
+            System.out.println(serializedFCB);
+            FCB deserializedFCB = FCB.deserialize(serializedFCB);
+            System.out.println(deserializedFCB);
+        } catch (Exception e) {
+            System.out.println(e);
+        }
     }
 
     public static void main_command(String[] args) throws Exception {
