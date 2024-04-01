@@ -1,10 +1,8 @@
 package com.neu.nosql;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
-import static com.neu.nosql.DB.METADATA_DB_NAME_LEN;
 
 public class FCB {
     public String name;

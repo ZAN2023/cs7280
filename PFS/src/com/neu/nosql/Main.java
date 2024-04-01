@@ -6,6 +6,8 @@ import com.neu.nosql.index.BTreeSerializer;
 import com.neu.nosql.io.MovieReader;
 import com.neu.nosql.io.MovieWriter;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -91,34 +93,38 @@ public class Main {
             }
 
             switch (tokens[0]) {
-                case "open":
+                case "open" -> {
                     if (tokens.length != 2) {
                         System.out.println("Usage: open <db_name>");
                         continue;
                     }
                     db = DB.open(tokens[1]);
-                    break;
-                case "put":
+                }
+                case "put" -> {
                     if (tokens.length != 2 || db == null) {
                         System.out.println("Usage: put <local_file>");
                         continue;
                     }
+                    if (!validatePut(tokens[1])) {
+                        continue;
+                    }
+                    db = DB.selectDBFile(db.metadata.dbName, tokens[1]);
                     db.put(tokens[1]);
-                    break;
-                case "get":
+                }
+                case "get" -> {
                     if (tokens.length != 2 || db == null) {
                         System.out.println("Usage: get <local_file>");
                         continue;
                     }
                     db.get(tokens[1]);
-                    break;
-                case "dir":
+                }
+                case "dir" -> {
                     List<String> files = db.dir();
                     for (String file : files) {
                         System.out.println(file);
                     }
-                    break;
-                case "find":
+                }
+                case "find" -> {
                     if (tokens.length != 3 || db == null) {
                         System.out.println("Usage: find <local_file> <key>");
                         continue;
@@ -126,21 +132,39 @@ public class Main {
                     int key = Integer.parseInt(tokens[2]);
                     String result = db.find(tokens[1], key);
                     System.out.printf("Value: %s\n", result);
-                    break;
-                case "kill":
+                }
+                case "kill" -> {
                     if (tokens.length != 2) {
                         System.out.println("Usage: kill <db_name>");
                         continue;
                     }
                     db.kill(tokens[1]);
-                    break;
-                case "quit":
+                }
+                case "quit" -> {
                     System.out.println("Bye!");
                     return;
-                default:
-                    System.out.println("Unknown command");
+                }
+                default -> System.out.println("Unknown command");
             }
         }
         scanner.close();
+    }
+
+    private static boolean validatePut(String fileName) {
+        String path = "./src/com/neu/nosql/io/" + fileName;
+        if (Files.notExists(Paths.get(path))) {
+            System.out.println("Cannot find " + fileName);
+            return false;
+        }
+        String type = "";
+        int dotIndex = fileName.lastIndexOf('.');
+        if (dotIndex > 0 && dotIndex < fileName.length() - 1) {
+            type = fileName.substring(dotIndex + 1).toLowerCase();
+        }
+        if (!type.equals("csv")) {
+            System.out.println("Unsupported file type.");
+            return false;
+        }
+        return true;
     }
 }
