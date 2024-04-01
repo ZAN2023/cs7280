@@ -10,20 +10,21 @@ import static com.neu.nosql.DB.ENTRY_SIZE;
 public class Block {
     public byte[] data;
 
-    private static final byte DEFAULT_VALUE = 0;
+    private static final byte DEFAULT_VALUE = ' ';
 
     private int writePosition;
 
-    public void initializeDefaultBytes() {
+    public void fillUpWithDefaultBytes() {
         for (int i = writePosition; i < BLOCK_SIZE; i++) {
             data[i] = DEFAULT_VALUE;
         }
     }
 
-    public void fillUpWithDefaultBytes() {
+    public void initializeDefaultBytes() {
         for (int i = 0; i < 36; i++) {
             data[i] = DEFAULT_VALUE;
         }
+        writePosition = 36;
     }
 
     public void write(byte[] data, int length) {
@@ -54,7 +55,7 @@ public class Block {
             // 检查 entryData 是否全为默认值 0
             boolean isDefaultValue = true;
             for (byte b : entryData) {
-                if (b != 0) {
+                if (b != ' ') {
                     isDefaultValue = false;
                     break;
                 }
@@ -73,7 +74,7 @@ public class Block {
 
     public int getValidDataSize() {
         int size = data.length;
-        while (size > 0 && data[size - 1] == 0) {
+        while (size > 0 && data[size - 1] == ' ') {
             size--;
         }
         return size;

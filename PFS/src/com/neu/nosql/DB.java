@@ -75,79 +75,6 @@ public class DB {
         return db;
     }
 
-    private static DB newDB(String dbName, int suffix) {
-        DB db = new DB();
-        db.metadata = new Metadata(dbName, suffix);
-        Arrays.fill(db.bitmap, 0, METADATA_BLOCK_CNT + BITMAP_BLOCK_CNT, true);
-
-        return db;
-    }
-
-    public int countEmptyBlock() {
-        int cnt = 0;
-        for (int i = 11; i < this.bitmap.length; i++) {
-            if (!this.bitmap[i]) {
-                cnt++;
-            }
-        }
-        return cnt;
-    }
-
-    public int nextFCB() {
-        for (int i = 3; i < 11; i++) {
-            if (!this.bitmap[i]) {
-                this.bitmap[i] = true;
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    public ArrayList<Integer> allocateBlocks(int num) {
-        ArrayList<Integer> blocks = new ArrayList<>();
-        for (int i = 11; i < this.bitmap.length && num > 0; i++) {
-            if (!this.bitmap[i]) {
-                blocks.add(i);
-                this.bitmap[i] = true;
-                num--;
-            }
-        }
-        return blocks;
-    }
-
-    public static DB selectDBFile(String dbName, String fileName) throws Exception {
-        int blockNeeded = calcBlockNeeded(fileName);
-        DB db = null;
-        for (int i = 0; ; i++) {
-            db = open(dbName, i);
-            if (db.countEmptyBlock() >= blockNeeded) {
-                break;
-            }
-        }
-        return db;
-    }
-
-    private static int calcBlockNeeded(String fileName) {
-        Map<Integer, String> lines = MovieReader.readMoviesFromCSV("./src/com/neu/nosql/io/" + fileName);
-
-        int dataBlockNum = lines.size() / BLOCK_ENTRY_NUM;
-        if (lines.size() % BLOCK_ENTRY_NUM != 0) {
-            dataBlockNum++;
-        }
-
-        BTree bTree = new BTree();
-        for (Map.Entry<Integer, String> line : lines.entrySet()) {
-            bTree.insert(line.getKey(), -1);
-        }
-        byte[] indexBytes = new BTreeSerializer().serialize(bTree.getRoot()).getBytes();
-        int indexBlockNum = indexBytes.length / BLOCK_SIZE;
-        if (indexBytes.length % BLOCK_SIZE != 0) {
-            indexBlockNum++;
-        }
-
-        return dataBlockNum + indexBlockNum;
-    }
-
     public void put(String fileName) throws Exception {
         // 解析输入csv文件为map，每一个entry代表一行，key是ID，val是内容
         Map<Integer, String> lines = MovieReader.readMoviesFromCSV("./src/com/neu/nosql/io/" + fileName);
@@ -186,6 +113,7 @@ public class DB {
             if (i == indexBlocks.size() - 1) {
                 this.blocks.get(indexBlocks.get(i)).
                         write(Arrays.copyOfRange(indexBytes, from, indexBytes.length), indexBytes.length - from);
+                this.blocks.get(indexBlocks.get(i)).fillUpWithDefaultBytes();
             } else {
                 this.blocks.get(indexBlocks.get(i)).
                         write(Arrays.copyOfRange(indexBytes, from, from + BLOCK_SIZE), BLOCK_SIZE);
@@ -197,49 +125,6 @@ public class DB {
 
         // flush当前db到磁盘
         this.flush();
-    }
-
-    private byte[] serializeBitmap() {
-        byte[] bytes = new byte[BLOCK_CNT];
-        for (int i = 0; i < this.bitmap.length; i++) {
-            if (this.bitmap[i]) {
-                bytes[i / 8] |= (1 << (i % 8));
-            }
-        }
-        return bytes;
-    }
-
-    private void flush() {
-        String fileName = this.metadata.dbName + ".db" + this.metadata.suffix;
-        try (FileOutputStream fos = new FileOutputStream(fileName);
-             FileChannel channel = fos.getChannel()) {
-
-            ByteBuffer buffer = ByteBuffer.allocate(FILE_SIZE);
-
-            // Write metadata
-            byte[] metadataBytes = Metadata.serialize(this.metadata);
-            buffer.put(metadataBytes);
-
-            // Write bitmap
-            byte[] bitmapBytes = serializeBitmap();
-            buffer.put(bitmapBytes);
-
-            // Write FCBs
-            for (FCB fcb : this.fcbs) {
-                byte[] fcbBytes = FCB.serialize(fcb);
-                buffer.put(fcbBytes);
-            }
-
-            // Write blocks
-            for (int i = 11; i < BLOCK_CNT; i++) {
-                buffer.put(this.blocks.get(i).data);
-            }
-
-            buffer.flip();
-            channel.write(buffer);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     public void get(String fileName) throws Exception {
@@ -257,23 +142,6 @@ public class DB {
                 MovieWriter.writeToCSV(lines, outputPath);
             }
         }
-    }
-
-    public static DB locateDB(String dbName, String fileName) throws Exception {
-        DB db = null;
-        for (int i = 0; ; i++) {
-            String dbPath = "./src/com/neu/nosql/file/" + dbName + " _" + i;
-            if (Files.notExists(Paths.get(dbPath))) {
-                break;
-            }
-            db = open(dbName, i);
-            for (FCB fcb : db.fcbs) {
-                if (fcb.name.equals(Utils.parseInputFileName(fileName)) && fcb.type.equals(Utils.parseInputFileType(fileName))) {
-                    return db;
-                }
-            }
-        }
-        return null;
     }
 
     public String find(String fileName, int id) throws Exception {
@@ -336,6 +204,140 @@ public class DB {
                     }
                 }
             }
+        }
+    }
+
+    private static DB newDB(String dbName, int suffix) {
+        DB db = new DB();
+        db.metadata = new Metadata(dbName, suffix);
+        Arrays.fill(db.bitmap, 0, METADATA_BLOCK_CNT + BITMAP_BLOCK_CNT, true);
+
+        return db;
+    }
+
+    public int countEmptyBlock() {
+        int cnt = 0;
+        for (int i = 11; i < this.bitmap.length; i++) {
+            if (!this.bitmap[i]) {
+                cnt++;
+            }
+        }
+        return cnt;
+    }
+
+    public ArrayList<Integer> allocateBlocks(int num) {
+        ArrayList<Integer> blocks = new ArrayList<>();
+        for (int i = 11; i < this.bitmap.length && num > 0; i++) {
+            if (!this.bitmap[i]) {
+                blocks.add(i);
+                this.bitmap[i] = true;
+                num--;
+            }
+        }
+        return blocks;
+    }
+
+    public int nextFCB() {
+        for (int i = 3; i < 11; i++) {
+            if (!this.bitmap[i]) {
+                this.bitmap[i] = true;
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public static DB selectDBFile(String dbName, String fileName) throws Exception {
+        int blockNeeded = calcBlockNeeded(fileName);
+        DB db = null;
+        for (int i = 0; ; i++) {
+            db = open(dbName, i);
+            if (db.countEmptyBlock() >= blockNeeded) {
+                break;
+            }
+        }
+        return db;
+    }
+
+    private static int calcBlockNeeded(String fileName) {
+        Map<Integer, String> lines = MovieReader.readMoviesFromCSV("./src/com/neu/nosql/io/" + fileName);
+
+        int dataBlockNum = lines.size() / BLOCK_ENTRY_NUM;
+        if (lines.size() % BLOCK_ENTRY_NUM != 0) {
+            dataBlockNum++;
+        }
+
+        BTree bTree = new BTree();
+        for (Map.Entry<Integer, String> line : lines.entrySet()) {
+            bTree.insert(line.getKey(), -1);
+        }
+        byte[] indexBytes = new BTreeSerializer().serialize(bTree.getRoot()).getBytes();
+        int indexBlockNum = indexBytes.length / BLOCK_SIZE;
+        if (indexBytes.length % BLOCK_SIZE != 0) {
+            indexBlockNum++;
+        }
+
+        return dataBlockNum + indexBlockNum;
+    }
+
+
+    private byte[] serializeBitmap() {
+        byte[] bytes = new byte[BLOCK_CNT];
+        for (int i = 0; i < this.bitmap.length; i++) {
+            if (this.bitmap[i]) {
+                bytes[i / 8] |= (1 << (i % 8));
+            }
+        }
+        return bytes;
+    }
+
+    public static DB locateDB(String dbName, String fileName) throws Exception {
+        DB db = null;
+        for (int i = 0; ; i++) {
+            String dbPath = "./src/com/neu/nosql/file/" + dbName + " _" + i;
+            if (Files.notExists(Paths.get(dbPath))) {
+                break;
+            }
+            db = open(dbName, i);
+            for (FCB fcb : db.fcbs) {
+                if (fcb.name.equals(Utils.parseInputFileName(fileName)) && fcb.type.equals(Utils.parseInputFileType(fileName))) {
+                    return db;
+                }
+            }
+        }
+        return null;
+    }
+
+    private void flush() {
+        String fileName = this.metadata.dbName + ".db" + this.metadata.suffix;
+        try (FileOutputStream fos = new FileOutputStream(fileName);
+             FileChannel channel = fos.getChannel()) {
+
+            ByteBuffer buffer = ByteBuffer.allocate(FILE_SIZE);
+
+            // Write metadata
+            byte[] metadataBytes = Metadata.serialize(this.metadata);
+            buffer.put(metadataBytes);
+
+            // Write bitmap
+            byte[] bitmapBytes = serializeBitmap();
+            buffer.put(bitmapBytes);
+
+            // Write FCBs
+            for (FCB fcb : this.fcbs) {
+                byte[] fcbBytes = FCB.serialize(fcb);
+                buffer.put(fcbBytes);
+            }
+
+            // Write blocks
+            for (int i = 11; i < BLOCK_CNT; i++) {
+                buffer.put(this.blocks.get(i).data);
+            }
+
+            buffer.flip();
+            channel.write(buffer);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }
