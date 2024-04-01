@@ -74,7 +74,7 @@ public class BTree {
         return findKey(root, key);
     }
 
-    private int findKey(BTreeNode node, int key) {
+    public static int findKey(BTreeNode node, int key) {
         int i = 0;
         while (i < node.keys.size() && key > node.keys.get(i).key) {
             i++;

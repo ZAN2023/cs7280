@@ -116,6 +116,11 @@ public class Main {
                         System.out.println("Usage: get <local_file>");
                         continue;
                     }
+                    db = DB.locateDB(db.metadata.dbName, tokens[1]);
+                    if (db == null) {
+                        System.out.println("Current file does not exist.");
+                        continue;
+                    }
                     db.get(tokens[1]);
                 }
                 case "dir" -> {
@@ -127,6 +132,11 @@ public class Main {
                 case "find" -> {
                     if (tokens.length != 3 || db == null) {
                         System.out.println("Usage: find <local_file> <key>");
+                        continue;
+                    }
+                    db = DB.locateDB(db.metadata.dbName, tokens[1]);
+                    if (db == null) {
+                        System.out.println("Current file does not exist.");
                         continue;
                     }
                     int key = Integer.parseInt(tokens[2]);
@@ -156,12 +166,8 @@ public class Main {
             System.out.println("Cannot find " + fileName);
             return false;
         }
-        String type = "";
-        int dotIndex = fileName.lastIndexOf('.');
-        if (dotIndex > 0 && dotIndex < fileName.length() - 1) {
-            type = fileName.substring(dotIndex + 1).toLowerCase();
-        }
-        if (!type.equals("csv")) {
+
+        if (!Utils.parseInputFileType(fileName).equals("csv")) {
             System.out.println("Unsupported file type.");
             return false;
         }

@@ -1,9 +1,12 @@
 package com.neu.nosql;
 
 import com.neu.nosql.index.BTree;
+import com.neu.nosql.index.BTreeNode;
 import com.neu.nosql.index.BTreeSerializer;
 import com.neu.nosql.io.MovieReader;
+import com.neu.nosql.io.MovieWriter;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -13,6 +16,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+
+import static com.neu.nosql.Utils.isMatchingFile;
 
 public class DB {
     public final ArrayList<Block> blocks = new ArrayList<>(BLOCK_CNT);
@@ -188,7 +193,7 @@ public class DB {
         }
         // 分配空fcb，并初始化当前文件的fcb，放到db中
         int fcbBlockID = nextFCB();
-        this.fcbs.set(fcbBlockID - 3, new FCB(fileName.substring(0, fileName.lastIndexOf('.')), "csv", indexBlocks, dataBlocks));
+        this.fcbs.set(fcbBlockID - 3, new FCB(Utils.parseInputFileName(fileName), "csv", indexBlocks, dataBlocks));
 
         // flush当前db到磁盘
         this.flush();
@@ -238,18 +243,99 @@ public class DB {
     }
 
     public void get(String fileName) throws Exception {
-
+        for (FCB fcb : this.fcbs) {
+            if (fcb.name.equals(Utils.parseInputFileName(fileName)) && fcb.type.equals(Utils.parseInputFileType(fileName))) {
+                Map<Integer, String> lines = new HashMap<>();
+                for (int blockID : fcb.dataBlocks) {
+                    Block block = this.blocks.get(blockID);
+                    for (DataEntry entry : block.getDataEntries()) {
+                        lines.put(entry.id, entry.val);
+                    }
+                }
+                String directory = "./src/com/neu/nosql/io/";
+                String outputPath = directory + "/" + fileName + ".output.csv";
+                MovieWriter.writeToCSV(lines, outputPath);
+            }
+        }
     }
 
-    public String find(String fileName, int key) throws Exception {
+    public static DB locateDB(String dbName, String fileName) throws Exception {
+        DB db = null;
+        for (int i = 0; ; i++) {
+            String dbPath = "./src/com/neu/nosql/file/" + dbName + " _" + i;
+            if (Files.notExists(Paths.get(dbPath))) {
+                break;
+            }
+            db = open(dbName, i);
+            for (FCB fcb : db.fcbs) {
+                if (fcb.name.equals(Utils.parseInputFileName(fileName)) && fcb.type.equals(Utils.parseInputFileType(fileName))) {
+                    return db;
+                }
+            }
+        }
+        return null;
+    }
+
+    public String find(String fileName, int id) throws Exception {
+        for (FCB fcb : this.fcbs) {
+            if (fcb.name.equals(Utils.parseInputFileName(fileName)) && fcb.type.equals(Utils.parseInputFileType(fileName))) {
+                int totalSize = 0;
+                for (int blockID : fcb.indexBlocks) {
+                    Block block = this.blocks.get(blockID);
+                    int validSize = block.getValidDataSize();
+                    totalSize += validSize;
+                }
+
+                // 创建一个字节数组来存储拼装后的数据
+                byte[] concatenatedData = new byte[totalSize];
+                // 将每个块的有效数据复制到拼装后的数组中
+                int offset = 0;
+                for (int blockID : fcb.indexBlocks) {
+                    Block block = this.blocks.get(blockID);
+                    int validSize = block.getValidDataSize();
+                    System.arraycopy(block.data, 0, concatenatedData, offset, validSize);
+                    offset += validSize;
+                }
+
+                BTreeNode root = new BTreeSerializer().deserialize(Arrays.toString(concatenatedData));
+                int blockID = BTree.findKey(root, id);
+                Block block = this.blocks.get(blockID);
+                for (DataEntry entry : block.getDataEntries()) {
+                    if (entry.id == id) {
+                        return entry.val;
+                    }
+                }
+            }
+        }
         return null;
     }
 
     public ArrayList<String> dir() throws Exception {
-        return null;
+        ArrayList<String> ans = new ArrayList<>();
+
+        File[] files = new File("./src/com/neu/nosql/file/").listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (file.isFile()) {
+                    ans.add(file.getName());
+                }
+            }
+        }
+        return ans;
     }
 
     public void kill(String dbName) throws Exception {
+        File directory = new File("./src/com/neu/nosql/file/");
+        if (directory.exists() && directory.isDirectory()) {
+            File[] files = directory.listFiles();
 
+            if (files != null) {
+                for (File file : files) {
+                    if (file.isFile() && isMatchingFile(file, dbName)) {
+                        file.delete();
+                    }
+                }
+            }
+        }
     }
 }
