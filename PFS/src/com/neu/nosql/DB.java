@@ -20,10 +20,10 @@ import java.util.Map;
 import static com.neu.nosql.Utils.isMatchingFile;
 
 public class DB {
-    public final ArrayList<Block> blocks = new ArrayList<>(BLOCK_CNT);
+    public ArrayList<Block> blocks = new ArrayList<>(BLOCK_CNT);
     public Metadata metadata = null;
     public final boolean[] bitmap = new boolean[BLOCK_CNT];
-    public final ArrayList<FCB> fcbs = new ArrayList<>(FCB_SIZE);
+    public ArrayList<FCB> fcbs = new ArrayList<>(FCB_SIZE);
 
     public static final int BLOCK_CNT = 4096; // 一个db file有4096个block
     public static final int METADATA_BLOCK_CNT = 1; // 1个block存储medata
@@ -40,7 +40,7 @@ public class DB {
     }
 
     public static DB open(String dbName, int suffix) throws Exception {
-        String dbPath = "./src/com/neu/nosql/file/" + dbName + " _" + suffix;
+        String dbPath = "./src/com/neu/nosql/file/" + dbName + ".db" + suffix;
         if (Files.notExists(Paths.get(dbPath))) {
             return newDB(dbName, 0);
         }
@@ -50,7 +50,7 @@ public class DB {
         // 初始化blocks
         byte[] data = Files.readAllBytes(Paths.get(dbPath));
         for (int i = 0; i < BLOCK_CNT; i++) {
-            db.blocks.set(i, new Block());
+            db.blocks.add(new Block());
             System.arraycopy(data, i * BLOCK_SIZE, db.blocks.get(i).data, 0, BLOCK_SIZE);
         }
 
@@ -69,7 +69,8 @@ public class DB {
 
         // 初始化FCB
         for (int i = 0; i < FCB_SIZE; i++) {
-            db.fcbs.set(i, FCB.deserialize(db.blocks.get(1 + i).data));
+            db.fcbs.add(new FCB());
+            db.fcbs.set(i, FCB.deserialize(db.blocks.get(3 + i).data));
         }
 
         return db;
@@ -87,21 +88,23 @@ public class DB {
         // 记录每行id对应的block ID，给后边index使用
         Map<Integer, Integer> id2Block = new HashMap<>(); // 输入文件里，每行id对应的数据在当前db的block id
         ArrayList<Integer> dataBlocks = allocateBlocks(dataBlockNum);
-        int p = 0;
+        int p = -1;
         for (Map.Entry<Integer, String> line : lines.entrySet()) {
             DataEntry entry = new DataEntry(line.getKey(), line.getValue());
-            if (this.blocks.get(dataBlocks.get(p)).isFull()) {
+            if (p == -1 || this.blocks.get(dataBlocks.get(p)).isFull()) {
                 p++;
                 this.blocks.get(dataBlocks.get(p)).initializeDefaultBytes();
             }
             this.blocks.get(dataBlocks.get(p)).write(DataEntry.serialize(entry), ENTRY_SIZE);
             id2Block.put(line.getKey(), dataBlocks.get(p));
         }
+        this.blocks.get(dataBlocks.get(p)).fillUpWithDefaultBytes();
         // 分配索引需要的block列表，创建索引，并将索引放到block
         BTree bTree = new BTree();
         for (Map.Entry<Integer, String> line : lines.entrySet()) {
             bTree.insert(line.getKey(), id2Block.get(line.getKey()));
         }
+        new BTree().print(bTree.getRoot());
         byte[] indexBytes = new BTreeSerializer().serialize(bTree.getRoot()).getBytes();
         int indexBlockNum = indexBytes.length / BLOCK_SIZE;
         if (indexBytes.length % BLOCK_SIZE != 0) {
@@ -147,25 +150,22 @@ public class DB {
     public String find(String fileName, int id) throws Exception {
         for (FCB fcb : this.fcbs) {
             if (fcb.name.equals(Utils.parseInputFileName(fileName)) && fcb.type.equals(Utils.parseInputFileType(fileName))) {
-                int totalSize = 0;
+                int totalLength = 0;
                 for (int blockID : fcb.indexBlocks) {
                     Block block = this.blocks.get(blockID);
-                    int validSize = block.getValidDataSize();
-                    totalSize += validSize;
+                    int validLength = block.getValidLength();
+                    totalLength += validLength;
                 }
 
-                // 创建一个字节数组来存储拼装后的数据
-                byte[] concatenatedData = new byte[totalSize];
-                // 将每个块的有效数据复制到拼装后的数组中
-                int offset = 0;
+                byte[] result = new byte[totalLength];
+                int destPos = 0;
                 for (int blockID : fcb.indexBlocks) {
                     Block block = this.blocks.get(blockID);
-                    int validSize = block.getValidDataSize();
-                    System.arraycopy(block.data, 0, concatenatedData, offset, validSize);
-                    offset += validSize;
+                    int validLength = block.getValidLength();
+                    System.arraycopy(block.data, 0, result, destPos, validLength);
+                    destPos += validLength;
                 }
-
-                BTreeNode root = new BTreeSerializer().deserialize(Arrays.toString(concatenatedData));
+                BTreeNode root = new BTreeSerializer().deserialize(new String(result));
                 int blockID = BTree.findKey(root, id);
                 Block block = this.blocks.get(blockID);
                 for (DataEntry entry : block.getDataEntries()) {
@@ -209,9 +209,19 @@ public class DB {
 
     private static DB newDB(String dbName, int suffix) {
         DB db = new DB();
+
+        for (int i = 0; i < BLOCK_CNT; i++) {
+            db.blocks.add(new Block());
+        }
+        for (int i = 0; i < FCB_SIZE; i++) {
+            db.fcbs.add(new FCB());
+        }
+
         db.metadata = new Metadata(dbName, suffix);
+
         Arrays.fill(db.bitmap, 0, METADATA_BLOCK_CNT + BITMAP_BLOCK_CNT, true);
 
+        db.flush();
         return db;
     }
 
@@ -280,21 +290,10 @@ public class DB {
         return dataBlockNum + indexBlockNum;
     }
 
-
-    private byte[] serializeBitmap() {
-        byte[] bytes = new byte[BLOCK_CNT];
-        for (int i = 0; i < this.bitmap.length; i++) {
-            if (this.bitmap[i]) {
-                bytes[i / 8] |= (1 << (i % 8));
-            }
-        }
-        return bytes;
-    }
-
     public static DB locateDB(String dbName, String fileName) throws Exception {
         DB db = null;
         for (int i = 0; ; i++) {
-            String dbPath = "./src/com/neu/nosql/file/" + dbName + " _" + i;
+            String dbPath = "./src/com/neu/nosql/file/" + dbName + ".db" + i;
             if (Files.notExists(Paths.get(dbPath))) {
                 break;
             }
@@ -309,7 +308,7 @@ public class DB {
     }
 
     private void flush() {
-        String fileName = this.metadata.dbName + ".db" + this.metadata.suffix;
+        String fileName = "./src/com/neu/nosql/file/" + this.metadata.dbName + ".db" + this.metadata.suffix;
         try (FileOutputStream fos = new FileOutputStream(fileName);
              FileChannel channel = fos.getChannel()) {
 
@@ -320,7 +319,7 @@ public class DB {
             buffer.put(metadataBytes);
 
             // Write bitmap
-            byte[] bitmapBytes = serializeBitmap();
+            byte[] bitmapBytes = BitMap.serializeBitmap(this.bitmap);
             buffer.put(bitmapBytes);
 
             // Write FCBs

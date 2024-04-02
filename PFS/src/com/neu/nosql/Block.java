@@ -8,11 +8,11 @@ import static com.neu.nosql.DB.BLOCK_SIZE;
 import static com.neu.nosql.DB.ENTRY_SIZE;
 
 public class Block {
-    public byte[] data;
+    public byte[] data = new byte[BLOCK_SIZE];
 
     private static final byte DEFAULT_VALUE = ' ';
 
-    private int writePosition;
+    private int writePosition = 0;
 
     public void fillUpWithDefaultBytes() {
         for (int i = writePosition; i < BLOCK_SIZE; i++) {
@@ -28,16 +28,12 @@ public class Block {
     }
 
     public void write(byte[] data, int length) {
-        if (data.length != ENTRY_SIZE) {
-            throw new IllegalArgumentException("Invalid entry data size");
-        }
-
         if (writePosition + ENTRY_SIZE > BLOCK_SIZE) {
             throw new IllegalStateException("Block is full");
         }
 
         System.arraycopy(data, 0, this.data, writePosition, length);
-        writePosition += ENTRY_SIZE;
+        writePosition += length;
     }
 
     public boolean isFull() {
@@ -72,11 +68,11 @@ public class Block {
         return entries;
     }
 
-    public int getValidDataSize() {
-        int size = data.length;
-        while (size > 0 && data[size - 1] == ' ') {
-            size--;
+    public int getValidLength() {
+        int length = this.data.length;
+        while (length > 0 && data[length - 1] == ' ') {
+            length--;
         }
-        return size;
+        return length;
     }
 }

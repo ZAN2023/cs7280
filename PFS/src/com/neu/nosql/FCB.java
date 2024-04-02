@@ -15,6 +15,13 @@ public class FCB {
     private static final int INDEX_BLOCK_SIZE = 50;
     private static final int DATA_BLOCK_SIZE = 176;
 
+    public FCB() {
+        this.name = "";
+        this.type = "";
+        this.indexBlocks = new ArrayList<>();
+        this.dataBlocks = new ArrayList<>();
+    }
+
     public FCB(String name, String type, ArrayList<Integer> indexBlocks, ArrayList<Integer> dataBlocks) {
         this.name = name;
         this.type = type;

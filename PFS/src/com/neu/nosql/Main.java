@@ -6,15 +6,15 @@ import com.neu.nosql.index.BTreeSerializer;
 import com.neu.nosql.io.MovieReader;
 import com.neu.nosql.io.MovieWriter;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
+import static com.neu.nosql.Utils.validatePut;
+
 public class Main {
-    public static void main(String[] args) {
+    public static void main1(String[] args) {
         System.out.println("============== Test B-Tree =============");
         BTree bTree = new BTree();
         int[] keys = {34, 11, 76, 53, 29, 48, 65, 95, 81, 92, 68, 59, 87, 20, 45, 26, 83, 70, 37, 7, 17, 73, 42, 96, 23, 58, 8, 50, 94, 61};
@@ -80,7 +80,7 @@ public class Main {
         }
     }
 
-    public static void main_command(String[] args) throws Exception {
+    public static void main(String[] args) throws Exception {
         Scanner scanner = new Scanner(System.in);
         DB db = null;
 
@@ -160,17 +160,5 @@ public class Main {
         scanner.close();
     }
 
-    private static boolean validatePut(String fileName) {
-        String path = "./src/com/neu/nosql/io/" + fileName;
-        if (Files.notExists(Paths.get(path))) {
-            System.out.println("Cannot find " + fileName);
-            return false;
-        }
 
-        if (!Utils.parseInputFileType(fileName).equals("csv")) {
-            System.out.println("Unsupported file type.");
-            return false;
-        }
-        return true;
-    }
 }
