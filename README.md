@@ -36,7 +36,7 @@ Bitmap
 - Utils.java: contains methods that handle the input from CSV file
 
 ### Running myPFS
-To execute myPFS under the directory 'TO BE UPDATED', please follow the steps:
+To execute myPFS under the directory 'PFS/src', please follow the steps:
 1. 'git clone https://github.com/ZAN2023/cs7280.git';
 2. go to the directory of PFS/src/com/neu/nosql
 4. run main.java
