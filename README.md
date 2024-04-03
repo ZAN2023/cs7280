@@ -10,19 +10,19 @@ Indexed allocation
 Bitmap
 
 ### Developing environment:
-- Lnaguage: Java
+- Language: Java
 - IDE: IntelliJ IDEA
 
 ### Assumptions and limitations
 - The database file has 1MB (1024KB) fixed size, and the system supports increasing by 1MB automatically
 - Each database file contains 4096 blocks, and the size of each block is 256 bytes
 - On top of each database, 1 block is used to store metadata, and 2 blocks are used to store the bitmap information
-- In each database file, a max of 8 File Control Blocks (FCB) is allowed
+- In each database file, a maximum of 8 File Control Blocks (FCB) is allowed
 - Each block supports 5 data entries, each data entry has a size of 44 bytes(40 bytes value + 4 bytes key)
-- The data entry is in format of key-value, while keys are unique
+- The data entry is in the format of key-value, while keys are unique
 - Duplicate keys are not handled
 - Only CSV format is supported
-- Not a memory based file system, but based on the existing file system on OS
+- Not a memory-based file system, but based on the existing file system on OS
 
 ### Project structure
 - Main.java: the main entry point of this system
@@ -31,16 +31,16 @@ Bitmap
 - DataEntry.java: represents a data entry with an ID and a value with relevant methods
 - FCB.java: represents a FCB with file metadata with relevant methods
 - Metadata.java: represents the metadata of the database file with relevant methods
-- Bitmap.java: provides methods for serlization and deserialization of bitmap
+- Bitmap.java: provides methods for serialization and deserialization of bitmap
 - BTree.java, BTreeNode.java, BTreeSerializer.java: adapted from phase 1 of the project and implemented the B-Tree indexing structure
-- Utils.java: contains methods that handles the input from csv file
+- Utils.java: contains methods that handle the input from CSV file
 
 ### Running myPFS
 To execute myPFS under the directory 'TO BE UPDATED', please follow the steps:
 1. 'git clone https://github.com/ZAN2023/cs7280.git';
-2. go to directory of XXXX
+2. go to the directory of PFS/src/com/neu/nosql
 4. run main.java
-5. in the terminal, test with below commands:
+5. in the terminal, test with the below commands:
    - open <db_name>: Allocate a new 1 MByte <db_name> file if it does not already exist. If it does exist, begin using it for further commands
    - put <local_file>: Inserts data from the OS file <local_file> into the NoSQL database <db_name>.
    - get <local_file>: Downloads the data file <local_file> from the NoSQL database <db_name> and saves it to the current OS directory
