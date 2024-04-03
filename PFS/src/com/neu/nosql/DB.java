@@ -141,10 +141,32 @@ public class DB {
                     }
                 }
                 String directory = "./src/com/neu/nosql/io/";
-                String outputPath = directory + "/" + fileName + ".output.csv";
+                String outputPath = directory + "/" + fileName + ".output";
                 MovieWriter.writeToCSV(lines, outputPath);
             }
         }
+    }
+
+    public void remove(String fileName) throws Exception {
+        for (int i = 0; i < this.fcbs.size(); i++) {
+            FCB fcb = this.fcbs.get(i);
+            if (fcb.name.equals(Utils.parseInputFileName(fileName)) && fcb.type.equals(Utils.parseInputFileType(fileName))) {
+                ArrayList<Integer> indexBlocks = fcb.indexBlocks;
+                for (int id : indexBlocks) {
+                    this.blocks.set(id, new Block());
+                    this.bitmap[id] = false;
+                }
+                ArrayList<Integer> dataBlocks = fcb.indexBlocks;
+                for (int id : indexBlocks) {
+                    this.blocks.set(id, new Block());
+                    this.bitmap[id] = false;
+                }
+
+                this.fcbs.set(i, new FCB());
+                break;
+            }
+        }
+        this.flush();
     }
 
     public String find(String fileName, int id) throws Exception {
@@ -178,7 +200,7 @@ public class DB {
         return null;
     }
 
-    public ArrayList<String> dir() throws Exception {
+    public static ArrayList<String> dir() throws Exception {
         ArrayList<String> ans = new ArrayList<>();
 
         File[] files = new File("./src/com/neu/nosql/file/").listFiles();

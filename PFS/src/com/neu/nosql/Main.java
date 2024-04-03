@@ -118,13 +118,25 @@ public class Main {
                     }
                     db = DB.locateDB(db.metadata.dbName, tokens[1]);
                     if (db == null) {
-                        System.out.println("Current file does not exist.");
+                        System.out.println("File does not exist.");
                         continue;
                     }
                     db.get(tokens[1]);
                 }
+                case "rm" -> {
+                    if (tokens.length != 2 || db == null) {
+                        System.out.println("Usage: rm <local_file>");
+                        continue;
+                    }
+                    db = DB.locateDB(db.metadata.dbName, tokens[1]);
+                    if (db == null) {
+                        System.out.println("File does not exist.");
+                        continue;
+                    }
+                    db.remove(tokens[1]);
+                }
                 case "dir" -> {
-                    List<String> files = db.dir();
+                    List<String> files = DB.dir();
                     for (String file : files) {
                         System.out.println(file);
                     }
