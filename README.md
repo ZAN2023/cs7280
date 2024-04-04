@@ -35,6 +35,35 @@ Bitmap
 - BTree.java, BTreeNode.java, BTreeSerializer.java: adapted from phase 1 of the project and implemented the B-Tree indexing structure
 - Utils.java: contains methods that handle the input from CSV file
 
+### Database structure overview
+METADATA block:
+- The code defines the Metadata class to represent the metadata block.
+- The Metadata class contains fields such as dbName (database name) and suffix, which can be used to store relevant metadata information.
+- The serialize and deserialize methods in the Metadata class handle the serialization and deserialization of the metadata block.
+
+Bitmap blocks:
+- The code allocates 2 blocks (BITMAP_BLOCK_CNT) to store the bitmap information.
+- The BitMap class provides methods to serialize and deserialize the bitmap.
+- The serializeBitmap method converts the boolean array representation of the bitmap into a byte array of 512 bytes (2 blocks * 256 bytes per block).
+- The deserializeBitmap method converts the byte array representation back into a boolean array.
+
+FCB (File Control Block):
+- The code defines the FCB class to represent the File Control Block.
+- The FCB class contains fields such as name (file name), type (file type), indexBlocks (list of index block numbers), and dataBlocks (list of data block numbers).
+- The serialize and deserialize methods in the FCB class handle the serialization and deserialization of the FCB.
+- The serialized FCB occupies a fixed size of 256 bytes (BLOCK_SIZE).
+
+File Block:
+- The code defines the Block class to represent a file block.
+- Each block has a fixed size of 256 bytes (BLOCK_SIZE).
+- The Block class contains a byte array (data) to store the actual data.
+- The initializeDefaultBytes, fillUpWithDefaultBytes, write, isFull, getDataEntries, and getValidLength methods in the Block class provide functionality to manage and manipulate the file blocks.
+
+Overall directory:
+- The code defines the DB class to represent the database.
+- The DB class contains fields such as blocks (list of blocks), metadata (metadata block), bitmap (bitmap information), and fcbs (list of FCBs).
+- The BLOCK_CNT constant is set to 4096, indicating that each database file contains 4096 blocks. The BLOCK_SIZE constant is set to 256, specifying the size of each block in bytes. The METADATA_BLOCK_CNT constant is set to 1, indicating that 1 block is used to store metadata. The BITMAP_BLOCK_CNT constant is set to 2, indicating that 2 blocks are used to store the bitmap information.
+
 ### Running myPFS
 To execute myPFS under the directory 'PFS/src', please follow the steps:
 1. 'git clone https://github.com/ZAN2023/cs7280.git';
