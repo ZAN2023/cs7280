@@ -13,7 +13,15 @@ import java.util.Scanner;
 
 import static com.neu.nosql.Utils.validatePut;
 
+/**
+ * This class is the main entry point of the program.
+ */
 public class Main {
+    /**
+     * The main method.
+     *
+     * @param args the command line arguments
+     */
     public static void main1(String[] args) {
         System.out.println("============== Test B-Tree =============");
         BTree bTree = new BTree();
@@ -80,6 +88,11 @@ public class Main {
         }
     }
 
+    /**
+     * The main method.
+     *
+     * @param args the command line arguments
+     */
     public static void main(String[] args) throws Exception {
         Scanner scanner = new Scanner(System.in);
         DB db = null;

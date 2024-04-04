@@ -3,7 +3,12 @@ package com.neu.nosql;
 import java.io.*;
 import java.util.ArrayList;
 
-
+/**
+ * This class represents the file control block (FCB) of a file.
+ * The FCB contains metadata and structural information about a file,
+ * including its name, type, index blocks, and data blocks.
+ * It provides methods to serialize and deserialize FCB objects to/from byte arrays.
+ */
 public class FCB {
     public String name;
     public String type;
@@ -15,6 +20,11 @@ public class FCB {
     private static final int INDEX_BLOCK_SIZE = 50;
     private static final int DATA_BLOCK_SIZE = 176;
 
+    /**
+     * Constructs an FCB object with default values.
+     * The name and type are set to empty strings,
+     * and the index blocks and data blocks are initialized as empty ArrayLists.
+     */
     public FCB() {
         this.name = "";
         this.type = "";
@@ -22,6 +32,14 @@ public class FCB {
         this.dataBlocks = new ArrayList<>();
     }
 
+    /**
+     * Constructs an FCB object with the specified name, type, index blocks, and data blocks.
+     *
+     * @param name        the name of the file
+     * @param type        the type of the file
+     * @param indexBlocks the list of index block numbers associated with the file
+     * @param dataBlocks  the list of data block numbers associated with the file
+     */
     public FCB(String name, String type, ArrayList<Integer> indexBlocks, ArrayList<Integer> dataBlocks) {
         this.name = name;
         this.type = type;
@@ -29,7 +47,20 @@ public class FCB {
         this.dataBlocks = dataBlocks;
     }
 
-    // 序列化方法
+    /**
+     * Serializes the FCB object to a byte array.
+     * The serialization format is as follows:
+     * - The first 20 bytes represent the file name, padded with null bytes if necessary.
+     * - The next 10 bytes represent the file type, padded with null bytes if necessary.
+     * - The next 50 bytes represent the index blocks, where the first 4 bytes indicate the number of index blocks,
+     *   followed by the index block numbers, each occupying 4 bytes.
+     * - The last 176 bytes represent the data blocks, where the first 4 bytes indicate the number of data blocks,
+     *   followed by the data block numbers, each occupying 4 bytes.
+     *
+     * @param fcb the FCB object to be serialized
+     * @return the serialized byte array
+     * @throws IOException if an I/O error occurs during serialization
+     */
     public static byte[] serialize(FCB fcb) throws IOException {
         ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
         DataOutputStream dataOut = new DataOutputStream(byteOut);
@@ -74,7 +105,14 @@ public class FCB {
         return byteOut.toByteArray();
     }
 
-    // 反序列化方法
+    /**
+     * Deserializes the FCB object from a byte array.
+     * The deserialization process assumes the byte array follows the format described in the `serialize` method.
+     *
+     * @param data the byte array to be deserialized
+     * @return the deserialized FCB object
+     * @throws IOException if an I/O error occurs during deserialization
+     */
     public static FCB deserialize(byte[] data) throws IOException {
         ByteArrayInputStream byteIn = new ByteArrayInputStream(data);
         DataInputStream dataIn = new DataInputStream(byteIn);
@@ -115,6 +153,12 @@ public class FCB {
         return new FCB(name, type, indexBlocks, dataBlocks);
     }
 
+    /**
+     * Returns a string representation of the FCB object.
+     * The string includes the file name, type, index blocks, and data blocks enclosed in curly braces.
+     *
+     * @return a string representation of the FCB object
+     */
     @Override
     public String toString() {
         return "FCB{" +

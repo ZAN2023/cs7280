@@ -19,6 +19,12 @@ import java.util.Map;
 
 import static com.neu.nosql.Utils.isMatchingFile;
 
+/**
+ * This class represents a database.
+ * It manages the blocks, metadata, bitmap, and file control blocks (FCBs) of the database.
+ * It provides methods to open, create, and manipulate the database, including putting, getting,
+ * removing, and finding files within the database.
+ */
 public class DB {
     public ArrayList<Block> blocks = new ArrayList<>(BLOCK_CNT);
     public Metadata metadata = null;
@@ -35,10 +41,26 @@ public class DB {
     public static final int ENTRY_SIZE = 44;
     private static final int FILE_SIZE = 1024 * 1024; // 1MB
 
+    /**
+     * Opens an existing database with the specified name.
+     *
+     * @param dbName the name of the database
+     * @return the opened database
+     * @throws Exception if an error occurs while opening the database
+     */
     public static DB open(String dbName) throws Exception {
         return open(dbName, 0);
     }
 
+    /**
+     * Opens an existing database with the specified name and suffix.
+     * If the database file does not exist, a new database is created.
+     *
+     * @param dbName the name of the database
+     * @param suffix the suffix of the database file
+     * @return the opened or created database
+     * @throws Exception if an error occurs while opening or creating the database
+     */
     public static DB open(String dbName, int suffix) throws Exception {
         String dbPath = "./src/com/neu/nosql/file/" + dbName + ".db" + suffix;
         if (Files.notExists(Paths.get(dbPath))) {
@@ -47,17 +69,17 @@ public class DB {
 
         DB db = new DB();
 
-        // 初始化blocks
+        // Initialize blocks
         byte[] data = Files.readAllBytes(Paths.get(dbPath));
         for (int i = 0; i < BLOCK_CNT; i++) {
             db.blocks.add(new Block());
             System.arraycopy(data, i * BLOCK_SIZE, db.blocks.get(i).data, 0, BLOCK_SIZE);
         }
 
-        // 初始化metadata
+        // Initialize metadata
         db.metadata = Metadata.deserialize(db.blocks.get(0).data);
 
-        // 初始化bitmap
+        // Initialize bitmap
         for (int i = 0; i < BLOCK_CNT; i++) {
             if (i < BLOCK_CNT / 2) {
                 db.bitmap[i] = (db.blocks.get(METADATA_BLOCK_CNT).data[i / 8] & (1 << (i % 8))) != 0;
@@ -67,7 +89,7 @@ public class DB {
             }
         }
 
-        // 初始化FCB
+        // Initialize FCBs
         for (int i = 0; i < FCB_SIZE; i++) {
             db.fcbs.add(new FCB());
             db.fcbs.set(i, FCB.deserialize(db.blocks.get(3 + i).data));
@@ -76,17 +98,27 @@ public class DB {
         return db;
     }
 
+    /**
+     * Puts the specified file into the database.
+     * The file is split into data entries and stored in data blocks.
+     * An index is created using a B-tree to map the entry IDs to their corresponding block IDs.
+     * The file control block (FCB) for the file is updated with the index and data block information.
+     *
+     * @param fileName the name of the file to be put into the database
+     * @throws Exception if an error occurs while putting the file into the database
+     */
     public void put(String fileName) throws Exception {
-        // 解析输入csv文件为map，每一个entry代表一行，key是ID，val是内容
+        // Parse the input CSV file into a map, where each entry represents a row
+        // The key is the ID, and the value is the content
         Map<Integer, String> lines = MovieReader.readMoviesFromCSV("./src/com/neu/nosql/io/" + fileName);
         int dataBlockNum = lines.size() / BLOCK_ENTRY_NUM;
         if (lines.size() % BLOCK_ENTRY_NUM != 0) {
             dataBlockNum++;
         }
 
-        // 分配空的block列表，把文件内容放到对应的data block中
-        // 记录每行id对应的block ID，给后边index使用
-        Map<Integer, Integer> id2Block = new HashMap<>(); // 输入文件里，每行id对应的数据在当前db的block id
+        // Allocate empty blocks and store the file content in the corresponding data blocks
+        // Record the block ID for each row ID for later indexing
+        Map<Integer, Integer> id2Block = new HashMap<>(); // Mapping of row ID to block ID in the current database
         ArrayList<Integer> dataBlocks = allocateBlocks(dataBlockNum);
         int p = -1;
         for (Map.Entry<Integer, String> line : lines.entrySet()) {
@@ -99,7 +131,7 @@ public class DB {
             id2Block.put(line.getKey(), dataBlocks.get(p));
         }
         this.blocks.get(dataBlocks.get(p)).fillUpWithDefaultBytes();
-        // 分配索引需要的block列表，创建索引，并将索引放到block
+        // Allocate blocks for the index, create the index using a B-tree, and store the index in the blocks
         BTree bTree = new BTree();
         for (Map.Entry<Integer, String> line : lines.entrySet()) {
             bTree.insert(line.getKey(), id2Block.get(line.getKey()));
@@ -122,14 +154,21 @@ public class DB {
                         write(Arrays.copyOfRange(indexBytes, from, from + BLOCK_SIZE), BLOCK_SIZE);
             }
         }
-        // 分配空fcb，并初始化当前文件的fcb，放到db中
+        // Allocate an empty FCB and initialize the FCB for the current file
         int fcbBlockID = nextFCB();
         this.fcbs.set(fcbBlockID - 3, new FCB(Utils.parseInputFileName(fileName), "csv", indexBlocks, dataBlocks));
 
-        // flush当前db到磁盘
+        // Flush the current database to disk
         this.flush();
     }
 
+    /**
+     * Gets the specified file from the database.
+     * The file content is retrieved from the data blocks and written to an output CSV file.
+     *
+     * @param fileName the name of the file to be retrieved from the database
+     * @throws Exception if an error occurs while getting the file from the database
+     */
     public void get(String fileName) throws Exception {
         for (FCB fcb : this.fcbs) {
             if (fcb.name.equals(Utils.parseInputFileName(fileName)) && fcb.type.equals(Utils.parseInputFileType(fileName))) {
@@ -147,6 +186,13 @@ public class DB {
         }
     }
 
+    /**
+     * Removes the specified file from the database.
+     * The file's index blocks and data blocks are deleted, and the corresponding FCB is reset.
+     *
+     * @param fileName the name of the file to be removed from the database
+     * @throws Exception if an error occurs while removing the file from the database
+     */
     public void remove(String fileName) throws Exception {
         for (int i = 0; i < this.fcbs.size(); i++) {
             FCB fcb = this.fcbs.get(i);
@@ -169,6 +215,14 @@ public class DB {
         this.flush();
     }
 
+    /**
+     * Finds the specified file from the database and returns the value associated with the given ID.
+     *
+     * @param fileName the name of the file to be searched
+     * @param id       the ID to be searched within the file
+     * @return the value associated with the given ID in the file, or null if not found
+     * @throws Exception if an error occurs while finding the file or ID
+     */
     public String find(String fileName, int id) throws Exception {
         for (FCB fcb : this.fcbs) {
             if (fcb.name.equals(Utils.parseInputFileName(fileName)) && fcb.type.equals(Utils.parseInputFileType(fileName))) {
@@ -200,6 +254,12 @@ public class DB {
         return null;
     }
 
+    /**
+     * Lists all the files in the database directory.
+     *
+     * @return the list of file names in the database directory
+     * @throws Exception if an error occurs while listing the files
+     */
     public static ArrayList<String> dir() throws Exception {
         ArrayList<String> ans = new ArrayList<>();
 
@@ -214,6 +274,12 @@ public class DB {
         return ans;
     }
 
+    /**
+     * Kills (deletes) all the database files with the specified name.
+     *
+     * @param dbName the name of the database to be killed
+     * @throws Exception if an error occurs while killing the database
+     */
     public void kill(String dbName) throws Exception {
         File directory = new File("./src/com/neu/nosql/file/");
         if (directory.exists() && directory.isDirectory()) {
@@ -229,6 +295,14 @@ public class DB {
         }
     }
 
+    /**
+     * Creates a new database with the specified name and suffix.
+     * Initializes the blocks, FCBs, metadata, and bitmap for the new database.
+     *
+     * @param dbName the name of the new database
+     * @param suffix the suffix of the new database
+     * @return the newly created database
+     */
     private static DB newDB(String dbName, int suffix) {
         DB db = new DB();
 
@@ -247,6 +321,11 @@ public class DB {
         return db;
     }
 
+    /**
+     * Counts the number of empty blocks in the database.
+     *
+     * @return the number of empty blocks
+     */
     public int countEmptyBlock() {
         int cnt = 0;
         for (int i = 11; i < this.bitmap.length; i++) {
@@ -257,6 +336,13 @@ public class DB {
         return cnt;
     }
 
+    /**
+     * Allocates the specified number of blocks from the database.
+     * Returns the block IDs of the allocated blocks.
+     *
+     * @param num the number of blocks to allocate
+     * @return the list of block IDs of the allocated blocks
+     */
     public ArrayList<Integer> allocateBlocks(int num) {
         ArrayList<Integer> blocks = new ArrayList<>();
         for (int i = 11; i < this.bitmap.length && num > 0; i++) {
@@ -269,6 +355,12 @@ public class DB {
         return blocks;
     }
 
+    /**
+     * Finds the next available file control block (FCB) in the database.
+     * Returns the index of the next available FCB, or -1 if no FCB is available.
+     *
+     * @return the index of the next available FCB, or -1 if no FCB is available
+     */
     public int nextFCB() {
         for (int i = 3; i < 11; i++) {
             if (!this.bitmap[i]) {
@@ -279,6 +371,15 @@ public class DB {
         return -1;
     }
 
+    /**
+     * Selects a database file with the specified name and file name.
+     * Returns the database file that has enough empty blocks to store the file.
+     *
+     * @param dbName   the name of the database
+     * @param fileName the name of the file to be stored
+     * @return the database file that has enough empty blocks to store the file
+     * @throws Exception if an error occurs while selecting the database file
+     */
     public static DB selectDBFile(String dbName, String fileName) throws Exception {
         int blockNeeded = calcBlockNeeded(fileName);
         DB db = null;
@@ -291,6 +392,12 @@ public class DB {
         return db;
     }
 
+    /**
+     * Calculates the number of blocks needed to store the specified file.
+     *
+     * @param fileName the name of the file to be stored
+     * @return the number of blocks needed to store the file
+     */
     private static int calcBlockNeeded(String fileName) {
         Map<Integer, String> lines = MovieReader.readMoviesFromCSV("./src/com/neu/nosql/io/" + fileName);
 
@@ -312,6 +419,15 @@ public class DB {
         return dataBlockNum + indexBlockNum;
     }
 
+    /**
+     * Locates the database file with the specified name and file name.
+     * Returns the database file that contains the specified file.
+     *
+     * @param dbName   the name of the database
+     * @param fileName the name of the file to be located
+     * @return the database file that contains the specified file
+     * @throws Exception if an error occurs while locating the database file
+     */
     public static DB locateDB(String dbName, String fileName) throws Exception {
         DB db = null;
         for (int i = 0; ; i++) {
@@ -329,6 +445,12 @@ public class DB {
         return null;
     }
 
+    /**
+     * Flushes the current state of the database to disk.
+     * The method writes the metadata, bitmap, file control blocks (FCBs), and blocks to the database file.
+     * The database file is named according to the database name and suffix.
+     * The file is written using a ByteBuffer and FileChannel for efficient I/O operations.
+     */
     private void flush() {
         String fileName = "./src/com/neu/nosql/file/" + this.metadata.dbName + ".db" + this.metadata.suffix;
         try (FileOutputStream fos = new FileOutputStream(fileName);

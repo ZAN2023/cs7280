@@ -3,6 +3,23 @@ package com.neu.nosql.index;
 import java.util.LinkedList;
 import java.util.Queue;
 
+/**
+ * This class represents a B-tree data structure.
+ * A B-tree is a self-balancing tree data structure that maintains sorted data and allows searches,
+ * sequential access, insertions, and deletions in logarithmic time.
+ *
+ * The BTree class provides methods for inserting keys into the tree and searching for keys.
+ * The tree is implemented as a collection of B-tree nodes, each containing a list of keys and children.
+ * The keys are stored in sorted order within each node, and the children represent the subtrees of the node.
+ *
+ * The B-tree has a minimum degree t, which determines the minimum number of keys in each node.
+ * The tree is balanced such that all leaf nodes are at the same level, and each non-leaf node (except the root)
+ * contains at least t-1 keys and at most 2t-1 keys.
+ *
+ * The insert() method inserts a key into the tree, maintaining the properties of the B-tree.
+ * The find() method searches for a key in the tree and returns the associated value.
+ * The print() method prints the keys of the tree level by level.
+ */
 public class BTree {
 
     private static final int MINIMUM_DEGREE = 3;
@@ -10,15 +27,28 @@ public class BTree {
     private BTreeNode root;
     private final int t; // Minimum degree
 
+    /**
+     * Constructs a new B-tree with the default minimum degree.
+     */
     public BTree() {
         this.root = new BTreeNode(true);
         this.t = MINIMUM_DEGREE;
     }
 
+
+    /**
+     * Gets the root node of the B-tree.
+     */
     public BTreeNode getRoot() {
         return root;
     }
 
+    /**
+     * Inserts a key-value pair into the B-tree.
+     *
+     * @param key the key to be inserted
+     * @param val the value associated with the key
+     */
     public void insert(int key, int val) {
         BTreeNode r = root;
         if (r.keys.size() == (2 * t - 1)) {
@@ -32,6 +62,13 @@ public class BTree {
         }
     }
 
+    /**
+     * Inserts a key-value pair into a non-full node.
+     *
+     * @param x   the node to insert the key into
+     * @param key the key to be inserted
+     * @param val the value associated with the key
+     */
     private void insertNonFull(BTreeNode x, int key, int val) {
         int i = x.keys.size() - 1;
         if (x.leaf) {
@@ -54,6 +91,12 @@ public class BTree {
         }
     }
 
+    /**
+     * Splits a child node of a given node.
+     *
+     * @param x the parent node
+     * @param i the index of the child to be split
+     */
     private void splitChild(BTreeNode x, int i) {
         BTreeNode y = x.children.get(i);
         BTreeNode z = new BTreeNode(y.leaf);
@@ -70,10 +113,23 @@ public class BTree {
         }
     }
 
+    /**
+     * Searches for a key in the B-tree and returns the associated value.
+     *
+     * @param key the key to search for
+     * @return the value associated with the key, or -1 if the key is not found
+     */
     public int find(int key) {
         return findKey(root, key);
     }
 
+    /**
+     * Recursively searches for a key in a B-tree node and its children.
+     *
+     * @param node the node to search in
+     * @param key  the key to search for
+     * @return the value associated with the key, or -1 if the key is not found
+     */
     public static int findKey(BTreeNode node, int key) {
         int i = 0;
         while (i < node.keys.size() && key > node.keys.get(i).key) {
@@ -92,6 +148,11 @@ public class BTree {
         }
     }
 
+    /**
+     * Prints the keys of the B-tree level by level.
+     *
+     * @param node the root node of the B-tree
+     */
     public void print(BTreeNode node) {
         if (node == null) {
             return;
